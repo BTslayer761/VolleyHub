@@ -36,7 +36,7 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [movingParticipant, setMovingParticipant] = useState<string | null>(null);
+  const [deletingParticipant, setDeletingParticipant] = useState<string | null>(null);
 
   useEffect(() => {
     loadParticipants();
@@ -113,42 +113,43 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
     }
   };
 
-  const handleMoveParticipant = async (userId: string, direction: 'up' | 'down') => {
-    if (movingParticipant) return; // Prevent concurrent moves
-    
-    const participant = participants.find((p) => p.userId === userId);
-    if (!participant || participant.slotIndex === undefined) return;
-
-    const currentIndex = participant.slotIndex;
-    const newSlotIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-
-    // Validate bounds
-    if (newSlotIndex < 1) return; // Can't move above slot 1
-    const maxSlot = Math.max(...participants.map((p) => p.slotIndex || 0));
-    if (newSlotIndex > maxSlot) return; // Can't move below last slot
-
-    try {
-      setMovingParticipant(userId);
-      await mockBookingService.moveParticipant(court.id, userId, newSlotIndex);
-      await loadParticipants(); // Reload to reflect changes
-      onRefresh?.(); // Notify parent to refresh
-    } catch (err) {
-      Alert.alert('Error', 'Failed to move participant. Please try again.');
-      console.error('Error moving participant:', err);
-    } finally {
-      setMovingParticipant(null);
+  const handleDeleteParticipant = async (participant: Participant) => {
+    if (!participant.bookingId) {
+      Alert.alert('Error', 'Cannot delete participant: booking ID not found.');
+      return;
     }
-  };
 
-  const canMoveUp = (participant: Participant): boolean => {
-    if (!participant.slotIndex) return false;
-    return participant.slotIndex > 1;
-  };
-
-  const canMoveDown = (participant: Participant): boolean => {
-    if (!participant.slotIndex) return false;
-    const maxSlot = Math.max(...participants.map((p) => p.slotIndex || 0));
-    return participant.slotIndex < maxSlot;
+    Alert.alert(
+      'Delete Participant',
+      `Are you sure you want to remove ${participant.userName} from this court?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingParticipant(participant.userId);
+              await mockBookingService.cancelIndoorBooking(
+                participant.bookingId!,
+                court.id,
+                court.maxSlots
+              );
+              await loadParticipants(); // Reload to reflect changes
+              onRefresh?.(); // Notify parent to refresh
+            } catch (err) {
+              Alert.alert('Error', 'Failed to delete participant. Please try again.');
+              console.error('Error deleting participant:', err);
+            } finally {
+              setDeletingParticipant(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -203,8 +204,8 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
           {participants.map((participant, index) => {
             const statusColor = getStatusColor(participant.status);
             const statusText = getStatusText(participant.status);
-            const isMoving = movingParticipant === participant.userId;
-            const showMoveControls = isIndoor && isAdmin && participant.slotIndex !== undefined;
+            const isDeleting = deletingParticipant === participant.userId;
+            const showDeleteButton = isIndoor && isAdmin;
 
             return (
               <ThemedView key={participant.userId} style={styles.participantItem}>
@@ -213,7 +214,10 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
                     {participant.userName}
                   </ThemedText>
                   {isIndoor && participant.slotIndex !== undefined && (
-                    <ThemedText style={styles.slotText}>Slot {participant.slotIndex}</ThemedText>
+                    <ThemedText style={styles.slotText}>Slot {participant.slotIndex + 1}</ThemedText>
+                  )}
+                  {isIndoor && participant.status === 'waitlisted' && participant.waitlistPosition !== undefined && (
+                    <ThemedText style={styles.waitlistText}>Waitlist #{participant.waitlistPosition}</ThemedText>
                   )}
                 </ThemedView>
                 
@@ -225,48 +229,23 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
                     </ThemedText>
                   </ThemedView>
 
-                  {/* Admin Move Controls (Indoor courts only) */}
-                  {showMoveControls && (
-                    <ThemedView style={styles.moveControls}>
-                      <TouchableOpacity
-                        style={[
-                          styles.moveButton,
-                          !canMoveUp(participant) && styles.moveButtonDisabled,
-                          { borderColor: Colors[colorScheme ?? 'light'].tint },
-                        ]}
-                        onPress={() => handleMoveParticipant(participant.userId, 'up')}
-                        disabled={!canMoveUp(participant) || isMoving}
-                        activeOpacity={0.7}>
-                        <IconSymbol
-                          name="chevron.up"
-                          size={16}
-                          color={
-                            canMoveUp(participant) && !isMoving
-                              ? Colors[colorScheme ?? 'light'].tint
-                              : '#9CA3AF'
-                          }
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.moveButton,
-                          !canMoveDown(participant) && styles.moveButtonDisabled,
-                          { borderColor: Colors[colorScheme ?? 'light'].tint },
-                        ]}
-                        onPress={() => handleMoveParticipant(participant.userId, 'down')}
-                        disabled={!canMoveDown(participant) || isMoving}
-                        activeOpacity={0.7}>
-                        <IconSymbol
-                          name="chevron.down"
-                          size={16}
-                          color={
-                            canMoveDown(participant) && !isMoving
-                              ? Colors[colorScheme ?? 'light'].tint
-                              : '#9CA3AF'
-                          }
-                        />
-                      </TouchableOpacity>
-                    </ThemedView>
+                  {/* Admin Delete Button (Indoor courts only) */}
+                  {showDeleteButton && (
+                    <TouchableOpacity
+                      style={[
+                        styles.deleteButton,
+                        { backgroundColor: Colors.light.error },
+                        isDeleting && styles.deleteButtonDisabled,
+                      ]}
+                      onPress={() => handleDeleteParticipant(participant)}
+                      disabled={isDeleting}
+                      activeOpacity={0.7}>
+                      <IconSymbol
+                        name="trash"
+                        size={18}
+                        color="#FFFFFF"
+                      />
+                    </TouchableOpacity>
                   )}
                 </ThemedView>
               </ThemedView>
@@ -307,6 +286,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
   },
+  waitlistText: {
+    fontSize: 14,
+    opacity: 0.7,
+    fontStyle: 'italic',
+  },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -317,21 +301,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
-  moveControls: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  moveButton: {
-    padding: 6,
+  deleteButton: {
+    padding: 8,
     borderRadius: 6,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 32,
-    minHeight: 32,
+    minWidth: 36,
+    minHeight: 36,
   },
-  moveButtonDisabled: {
-    opacity: 0.4,
+  deleteButtonDisabled: {
+    opacity: 0.5,
   },
   statusText: {
     fontSize: 12,
