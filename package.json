@@ -6,6 +6,7 @@
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "create-test-users": "node ./scripts/create-test-users.js",
+    "add-users-to-courts": "node ./scripts/add-users-to-courts.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

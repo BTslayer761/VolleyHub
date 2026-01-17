@@ -86,7 +86,7 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
             onPress: async () => {
               try {
                 setIsLoading(true);
-                await mockBookingService.cancelIndoorBooking(bookingId);
+                await mockBookingService.cancelIndoorBooking(bookingId, court.id, court.maxSlots);
                 setBookingStatus(null);
                 setBookingId(null);
                 setSlotIndex(undefined);
@@ -109,7 +109,12 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
       try {
         setIsLoading(true);
         const bookingMode = court.bookingMode || 'priority'; // Default to priority if not specified
-        const booking = await mockBookingService.requestIndoorSlot(court.id, user.id, bookingMode);
+        const booking = await mockBookingService.requestIndoorSlot(
+          court.id, 
+          user.id, 
+          bookingMode,
+          court.maxSlots
+        );
         setBookingStatus(booking.status || 'pending');
         setBookingId(booking.id);
         setSlotIndex(booking.slotIndex);

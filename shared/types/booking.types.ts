@@ -26,8 +26,10 @@ export interface Booking {
 export interface Participant {
   userId: string;
   userName: string;
+  bookingId?: string;      // Booking ID (for admin operations like deletion)
   slotIndex?: number;      // For indoor courts
   status?: BookingStatus;
+  waitlistPosition?: number; // Position in waitlist (1-based, for waitlisted users)
 }
 
 export interface BookingService {
@@ -48,13 +50,16 @@ export interface BookingService {
 
   /**
    * Request indoor court slot
+   * @param maxSlots - Maximum number of slots for the court (used for waitlist logic)
+   * @param bookingMode - 'fcfs' for immediate assignment, 'priority' for pending
    */
-  requestIndoorSlot(courtId: string, userId: string): Promise<Booking>;
+  requestIndoorSlot(courtId: string, userId: string, bookingMode?: 'fcfs' | 'priority', maxSlots?: number): Promise<Booking>;
 
   /**
    * Cancel indoor slot booking
+   * Automatically promotes first waitlisted person if someone cancels from main list
    */
-  cancelIndoorBooking(bookingId: string): Promise<void>;
+  cancelIndoorBooking(bookingId: string, courtId?: string, maxSlots?: number): Promise<void>;
 
   /**
    * Get list of participants for a court

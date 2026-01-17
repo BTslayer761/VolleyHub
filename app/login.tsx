@@ -67,14 +67,14 @@ export default function LoginScreen() {
 
   /**
    * Development: Quick sign in as regular user
-   * Automatically logs in with jarell@gmail.com / jarell
+   * Automatically logs in with user1@volleyhub.com / user123
    */
   const handleDevSignInAsUser = async () => {
     setError('');
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, 'jarell@gmail.com', 'jarell');
+      await signInWithEmailAndPassword(auth, 'user1@volleyhub.com', 'user123');
       setLoading(false);
       setShowVolleyball(true);
     } catch (err: any) {
@@ -199,7 +199,7 @@ export default function LoginScreen() {
               style={[
                 styles.button,
                 { 
-                  backgroundColor: themeColors.tint,
+                  backgroundColor: colorScheme === 'dark' ? '#0a7ea4' : themeColors.tint,
                   opacity: loading ? 0.6 : 1,
                 }
               ]}
