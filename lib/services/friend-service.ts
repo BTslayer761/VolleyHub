@@ -552,18 +552,26 @@ export const friendService: FriendService = {
 
       // Get all bookings for this court
       const bookingsRef = collection(db, 'bookings');
-      const q = query(
-        bookingsRef,
-        where('courtId', '==', courtId),
-        where('status', 'in', ['confirmed', 'pending'])
-      );
+      const q = query(bookingsRef, where('courtId', '==', courtId));
       const querySnapshot = await getDocs(q);
 
       const attendingUserIds = new Set<string>();
       querySnapshot.forEach((docSnapshot) => {
         const bookingData = docSnapshot.data();
-        if (bookingData.userId && bookingData.userId !== userId) {
-          attendingUserIds.add(bookingData.userId);
+        const bookingUserId = bookingData.userId;
+        
+        // Skip if it's the current user
+        if (!bookingUserId || bookingUserId === userId) {
+          return;
+        }
+        
+        // For outdoor courts: check if isGoing is true
+        // For indoor courts: check if status is 'confirmed' or 'pending'
+        const isOutdoorBooking = bookingData.isGoing === true;
+        const isIndoorBooking = bookingData.status === 'confirmed' || bookingData.status === 'pending';
+        
+        if (isOutdoorBooking || isIndoorBooking) {
+          attendingUserIds.add(bookingUserId);
         }
       });
 

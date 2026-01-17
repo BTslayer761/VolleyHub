@@ -3,16 +3,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { courtService } from '@/lib/services/court-service';
 import { Court, OutdoorCourtStatus } from '@/shared/types/court.types';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
+import { IconSymbol } from './ui/icon-symbol';
 
 // Booking components
 import { IndoorBookingButton } from '@/components/booking/indoor-booking-button';
 import { OutdoorBookingButton } from '@/components/booking/outdoor-booking-button';
 import { ParticipantsList } from '@/components/booking/participants-list';
 import CourtStatusModal from './court-status-modal';
+
+// Friends hook
+import { useFriends } from '@/hooks/use-friends';
 
 interface CourtCardProps {
   court: Court;
@@ -22,9 +26,32 @@ interface CourtCardProps {
 export default function CourtCard({ court, onBookingChange }: CourtCardProps) {
   const colorScheme = useColorScheme();
   const { hasRole } = useAuth();
+  const { getFriendsAttendingCourt } = useFriends();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isStatusModalVisible, setIsStatusModalVisible] = useState(false);
+  const [friendsAttending, setFriendsAttending] = useState<string[]>([]); // Array of friend user IDs
+  const [friendsCount, setFriendsCount] = useState(0);
   const isAdmin = hasRole('administrator');
+
+  // Fetch friends attending this court
+  useEffect(() => {
+    const loadFriendsAttending = async () => {
+      try {
+        const friends = await getFriendsAttendingCourt(court.id);
+        const friendIds = friends.map(f => f.userId);
+        setFriendsAttending(friendIds);
+        setFriendsCount(friends.length);
+        console.log(`[CourtCard] Friends attending ${court.name}:`, friends.length, friendIds);
+      } catch (error) {
+        console.error('Error loading friends attending court:', error);
+        setFriendsAttending([]);
+        setFriendsCount(0);
+      }
+    };
+
+    loadFriendsAttending();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [court.id, refreshKey]); // Removed getFriendsAttendingCourt from deps to avoid infinite loops
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -128,29 +155,53 @@ export default function CourtCard({ court, onBookingChange }: CourtCardProps) {
         },
       ]}>
       <View style={styles.header}>
-        <ThemedText type="subtitle" style={styles.courtName}>
-          {court.name}
-        </ThemedText>
-        <ThemedView
-          style={[
-            styles.typeBadge,
-            {
-              backgroundColor:
-                court.type === 'outdoor'
-                  ? 'rgba(34, 197, 94, 0.2)'
-                  : 'rgba(59, 130, 246, 0.2)',
-            },
-          ]}>
-          <ThemedText
+        {/* Row 1: Court name + Outdoor/Indoor badge on the same line */}
+        <View style={styles.headerTopRow}>
+          <ThemedText type="subtitle" style={styles.courtName}>
+            {court.name}
+          </ThemedText>
+          <ThemedView
             style={[
-              styles.typeText,
+              styles.typeBadge,
               {
-                color: court.type === 'outdoor' ? '#22c55e' : '#3b82f6',
+                backgroundColor:
+                  court.type === 'outdoor'
+                    ? 'rgba(34, 197, 94, 0.2)'
+                    : 'rgba(59, 130, 246, 0.2)',
               },
             ]}>
-            {court.type === 'outdoor' ? 'Outdoor' : 'Indoor'}
-          </ThemedText>
-        </ThemedView>
+            <ThemedText
+              style={[
+                styles.typeText,
+                {
+                  color: court.type === 'outdoor' ? '#22c55e' : '#3b82f6',
+                },
+              ]}>
+              {court.type === 'outdoor' ? 'Outdoor' : 'Indoor'}
+            </ThemedText>
+          </ThemedView>
+        </View>
+        {/* Row 2: Friends badge (only when friends are attending) */}
+        {friendsCount > 0 ? (
+          <ThemedView
+            style={[
+              styles.friendsBadge,
+              {
+                backgroundColor: colorScheme === 'dark' 
+                  ? 'rgba(59, 130, 246, 0.2)' 
+                  : 'rgba(59, 130, 246, 0.15)',
+              },
+            ]}>
+            <IconSymbol name="person.2.fill" size={14} color="#3b82f6" />
+            <ThemedText
+              style={[
+                styles.friendsBadgeText,
+                { color: '#3b82f6' },
+              ]}>
+              {friendsCount} {friendsCount === 1 ? 'friend' : 'friends'}
+            </ThemedText>
+          </ThemedView>
+        ) : null}
       </View>
 
       <View style={styles.details}>
@@ -253,7 +304,11 @@ export default function CourtCard({ court, onBookingChange }: CourtCardProps) {
 
       {/* Participants List */}
       <View style={styles.participantsSection} key={`participants-${refreshKey}`}>
-        <ParticipantsList court={court} showTitle={true} />
+        <ParticipantsList 
+          court={court} 
+          showTitle={true}
+          friendIds={friendsAttending}
+        />
       </View>
 
       {/* Status Update Modal (Admin only, Outdoor courts) */}
@@ -279,20 +334,39 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   header: {
+    flexDirection: 'column',
+    gap: 8,
+    marginBottom: 12,
+  },
+  headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
   },
   courtName: {
     flex: 1,
     fontSize: 18,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  friendsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  friendsBadgeText: {
+    fontSize: 12,
     fontWeight: '600',
   },
   typeBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
+    flexShrink: 0,
   },
   typeText: {
     fontSize: 12,

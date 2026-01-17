@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -26,9 +26,15 @@ interface ParticipantsListProps {
   court: Court;
   showTitle?: boolean; // Whether to show "Participants" title
   onRefresh?: () => void; // Callback to refresh list
+  friendIds?: string[]; // Array of friend user IDs to highlight
 }
 
-export function ParticipantsList({ court, showTitle = true, onRefresh }: ParticipantsListProps) {
+export function ParticipantsList({ 
+  court, 
+  showTitle = true, 
+  onRefresh,
+  friendIds = [],
+}: ParticipantsListProps) {
   const { hasRole } = useAuth();
   const colorScheme = useColorScheme();
   const isAdmin = hasRole('administrator');
@@ -223,12 +229,39 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
             const isDeleting = deletingParticipant === participant.userId;
             const showDeleteButton = isIndoor && isAdmin;
 
+            const isFriend = friendIds.includes(participant.userId);
+            
             return (
-              <ThemedView key={participant.userId} style={styles.participantItem}>
+              <ThemedView 
+                key={participant.userId} 
+                style={[
+                  styles.participantItem,
+                  isFriend && {
+                    backgroundColor: colorScheme === 'dark' 
+                      ? 'rgba(59, 130, 246, 0.15)' 
+                      : 'rgba(59, 130, 246, 0.1)',
+                    borderColor: colorScheme === 'dark' 
+                      ? 'rgba(59, 130, 246, 0.3)' 
+                      : 'rgba(59, 130, 246, 0.2)',
+                  },
+                ]}>
                 <ThemedView style={styles.participantInfo}>
-                  <ThemedText type="defaultSemiBold" style={styles.participantName}>
-                    {participant.userName}
-                  </ThemedText>
+                  <View style={styles.participantNameRow}>
+                    <ThemedText 
+                      type="defaultSemiBold" 
+                      style={[
+                        styles.participantName,
+                        isFriend && { color: '#3b82f6' },
+                      ]}>
+                      {participant.userName}
+                    </ThemedText>
+                    {isFriend && (
+                      <ThemedView style={styles.friendBadge}>
+                        <IconSymbol name="person.2.fill" size={12} color="#3b82f6" />
+                        <ThemedText style={styles.friendBadgeText}>Friend</ThemedText>
+                      </ThemedView>
+                    )}
+                  </View>
                   {isIndoor && participant.slotIndex !== undefined && (
                     <ThemedText style={styles.slotText}>Slot {participant.slotIndex + 1}</ThemedText>
                   )}
@@ -295,8 +328,28 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  participantNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   participantName: {
     fontSize: 16,
+  },
+  friendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+  },
+  friendBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#3b82f6',
   },
   slotText: {
     fontSize: 14,
