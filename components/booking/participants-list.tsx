@@ -10,6 +10,7 @@ import { ActivityIndicator, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Collapsible } from '@/components/ui/collapsible';
 
 // Mock services (temporary - will be replaced with real services during integration)
 import { mockBookingService } from '@/app/mocks/booking-mock';
@@ -107,15 +108,12 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
   if (loading) {
     return (
       <ThemedView style={styles.container}>
-        {showTitle && (
-          <ThemedText type="subtitle" style={styles.title}>
-            Participants
-          </ThemedText>
-        )}
-        <ThemedView style={styles.loadingContainer}>
-          <ActivityIndicator size="small" />
-          <ThemedText style={styles.loadingText}>Loading participants...</ThemedText>
-        </ThemedView>
+        <Collapsible title="Participants">
+          <ThemedView style={styles.loadingContainer}>
+            <ActivityIndicator size="small" />
+            <ThemedText style={styles.loadingText}>Loading participants...</ThemedText>
+          </ThemedView>
+        </Collapsible>
       </ThemedView>
     );
   }
@@ -123,14 +121,11 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
   if (error) {
     return (
       <ThemedView style={styles.container}>
-        {showTitle && (
-          <ThemedText type="subtitle" style={styles.title}>
-            Participants
-          </ThemedText>
-        )}
-        <ThemedView style={styles.errorContainer}>
-          <ThemedText style={styles.errorText}>Failed to load participants</ThemedText>
-        </ThemedView>
+        <Collapsible title="Participants">
+          <ThemedView style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>Failed to load participants</ThemedText>
+          </ThemedView>
+        </Collapsible>
       </ThemedView>
     );
   }
@@ -138,72 +133,64 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
   if (participants.length === 0) {
     return (
       <ThemedView style={styles.container}>
-        {showTitle && (
-          <ThemedText type="subtitle" style={styles.title}>
-            Participants
-          </ThemedText>
-        )}
-        <ThemedView style={styles.emptyContainer}>
-          <ThemedText style={styles.emptyText}>
-            {court.type === 'outdoor' 
-              ? 'No one is going yet. Be the first!' 
-              : 'No slot requests yet.'}
-          </ThemedText>
-        </ThemedView>
+        <Collapsible title="Participants (0)">
+          <ThemedView style={styles.emptyContainer}>
+            <ThemedText style={styles.emptyText}>
+              {court.type === 'outdoor' 
+                ? 'No one is going yet. Be the first!' 
+                : 'No slot requests yet.'}
+            </ThemedText>
+          </ThemedView>
+        </Collapsible>
       </ThemedView>
     );
   }
 
   const isIndoor = court.type === 'indoor';
 
+  const participantsTitle = `Participants (${participants.length})`;
+
   return (
     <ThemedView style={styles.container}>
-      {showTitle && (
-        <ThemedText type="subtitle" style={styles.title}>
-          Participants ({participants.length})
-        </ThemedText>
-      )}
-      
-      <ThemedView style={styles.list}>
-        {participants.map((participant, index) => {
-          const statusColor = getStatusColor(participant.status);
-          const statusText = getStatusText(participant.status);
+      <Collapsible title={participantsTitle}>
+        <ThemedView style={styles.list}>
+          {participants.map((participant, index) => {
+            const statusColor = getStatusColor(participant.status);
+            const statusText = getStatusText(participant.status);
 
-          return (
-            <ThemedView key={participant.userId} style={styles.participantItem}>
-              <ThemedView style={styles.participantInfo}>
-                <ThemedText type="defaultSemiBold" style={styles.participantName}>
-                  {participant.userName}
-                </ThemedText>
-                {isIndoor && participant.slotIndex !== undefined && (
-                  <ThemedText style={styles.slotText}>Slot {participant.slotIndex}</ThemedText>
-                )}
+            return (
+              <ThemedView key={participant.userId} style={styles.participantItem}>
+                <ThemedView style={styles.participantInfo}>
+                  <ThemedText type="defaultSemiBold" style={styles.participantName}>
+                    {participant.userName}
+                  </ThemedText>
+                  {isIndoor && participant.slotIndex !== undefined && (
+                    <ThemedText style={styles.slotText}>Slot {participant.slotIndex}</ThemedText>
+                  )}
+                </ThemedView>
+                
+                <ThemedView
+                  style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                  <ThemedText style={[styles.statusText, { color: statusColor }]}>
+                    {statusText}
+                  </ThemedText>
+                </ThemedView>
               </ThemedView>
-              
-              <ThemedView
-                style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
-                <ThemedText style={[styles.statusText, { color: statusColor }]}>
-                  {statusText}
-                </ThemedText>
-              </ThemedView>
-            </ThemedView>
-          );
-        })}
-      </ThemedView>
+            );
+          })}
+        </ThemedView>
+      </Collapsible>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
     marginTop: 8,
-  },
-  title: {
-    marginBottom: 4,
   },
   list: {
     gap: 8,
+    marginTop: 6,
   },
   participantItem: {
     flexDirection: 'row',

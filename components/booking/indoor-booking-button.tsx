@@ -157,12 +157,12 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 120,
+    alignSelf: 'stretch', // Make button full width like home screen
   },
   buttonRequest: {
     backgroundColor: '#3B82F6', // Blue
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     borderColor: '#6B7280',
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   buttonTextRequest: {
