@@ -65,6 +65,60 @@ export default function LoginScreen() {
     router.replace('/(tabs)');
   };
 
+  /**
+   * Development: Quick sign in as regular user
+   * Bypasses Firebase authentication for development purposes
+   * Note: Role will be handled by AuthContext when fully integrated
+   */
+  const handleDevSignInAsUser = async () => {
+    try {
+      // Try Firebase anonymous auth for development (optional)
+      // If Firebase is not configured, this will just navigate
+      try {
+        const { signInAnonymously } = await import('firebase/auth');
+        await signInAnonymously(auth);
+        console.log('Dev mode: Signed in as user (Firebase)');
+      } catch (firebaseError) {
+        // Firebase not available or not configured - skip for dev mode
+        console.log('Dev mode: Bypassing Firebase auth for user');
+      }
+      
+      // Navigate to app with volleyball animation
+      setShowVolleyball(true);
+    } catch (err) {
+      // If anything fails, still navigate for dev mode
+      console.log('Dev mode: Navigating to app as user', err);
+      setShowVolleyball(true);
+    }
+  };
+
+  /**
+   * Development: Quick sign in as administrator
+   * Bypasses Firebase authentication for development purposes
+   * Note: Role will be handled by AuthContext when fully integrated
+   */
+  const handleDevSignInAsAdmin = async () => {
+    try {
+      // Try Firebase anonymous auth for development (optional)
+      // If Firebase is not configured, this will just navigate
+      try {
+        const { signInAnonymously } = await import('firebase/auth');
+        await signInAnonymously(auth);
+        console.log('Dev mode: Signed in as admin (Firebase)');
+      } catch (firebaseError) {
+        // Firebase not available or not configured - skip for dev mode
+        console.log('Dev mode: Bypassing Firebase auth for admin');
+      }
+      
+      // Navigate to app with volleyball animation
+      setShowVolleyball(true);
+    } catch (err) {
+      // If anything fails, still navigate for dev mode
+      console.log('Dev mode: Navigating to app as admin', err);
+      setShowVolleyball(true);
+    }
+  };
+
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const themeColors = Colors[colorScheme ?? 'light'];
@@ -181,6 +235,38 @@ export default function LoginScreen() {
               activeOpacity={0.7}>
               <ThemedText style={styles.signupText}>Sign up</ThemedText>
             </TouchableOpacity>
+
+            {/* Development Quick Sign In Buttons */}
+            <View style={styles.devButtonsContainer}>
+              <ThemedText style={styles.devLabel}>Development Mode:</ThemedText>
+              <View style={styles.devButtonsRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.devButton,
+                    {
+                      backgroundColor: colorScheme === 'dark' ? '#1e3a8a' : '#3b82f6',
+                      borderColor: colorScheme === 'dark' ? '#3b82f6' : '#2563eb',
+                    }
+                  ]}
+                  onPress={handleDevSignInAsUser}
+                  activeOpacity={0.8}>
+                  <ThemedText style={styles.devButtonText}>Sign in as User</ThemedText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.devButton,
+                    {
+                      backgroundColor: colorScheme === 'dark' ? '#7c2d12' : '#dc2626',
+                      borderColor: colorScheme === 'dark' ? '#dc2626' : '#b91c1c',
+                    }
+                  ]}
+                  onPress={handleDevSignInAsAdmin}
+                  activeOpacity={0.8}>
+                  <ThemedText style={styles.devButtonText}>Sign in as Admin</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -298,5 +384,38 @@ const styles = StyleSheet.create({
   signupText: {
     fontSize: 16,
     textDecorationLine: 'underline',
+  },
+  devButtonsContainer: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(128, 128, 128, 0.2)',
+  },
+  devLabel: {
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: 'center',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  devButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+  },
+  devButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  devButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
