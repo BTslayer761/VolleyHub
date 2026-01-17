@@ -12,7 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 
 // Services
 import { useAuth } from '@/contexts/AuthContext';
-import { mockBookingService } from '@/app/mocks/booking-mock';
+import { mockBookingService } from '@/lib/mocks/booking-mock';
 
 // Types
 import { BookingStatus } from '@/shared/types/booking.types';

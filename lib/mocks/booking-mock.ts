@@ -120,4 +120,57 @@ export const mockBookingService: BookingService = {
     );
     return booking || null;
   },
+
+  /**
+   * Move a participant to a different slot position (Admin only)
+   * For indoor courts - reorders slot assignments
+   */
+  moveParticipant: async (courtId: string, userId: string, newSlotIndex: number) => {
+    const booking = mockBookings.find(
+      (b) => b.courtId === courtId && b.userId === userId
+    );
+    
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    // Get all bookings for this court that have slot indices
+    const courtBookings = mockBookings.filter(
+      (b) => b.courtId === courtId && b.slotIndex !== undefined
+    );
+    
+    const oldSlotIndex = booking.slotIndex;
+    
+    // If moving to a position that's already occupied, swap or shift
+    const targetBooking = courtBookings.find((b) => b.slotIndex === newSlotIndex && b.id !== booking.id);
+    
+    if (targetBooking && oldSlotIndex !== undefined) {
+      // Swap slots
+      targetBooking.slotIndex = oldSlotIndex;
+      targetBooking.updatedAt = new Date();
+    } else {
+      // Shift other participants
+      if (oldSlotIndex !== undefined && newSlotIndex < oldSlotIndex) {
+        // Moving up - shift participants down
+        courtBookings.forEach((b) => {
+          if (b.slotIndex !== undefined && b.slotIndex >= newSlotIndex && b.slotIndex < oldSlotIndex && b.id !== booking.id) {
+            b.slotIndex = (b.slotIndex || 0) + 1;
+            b.updatedAt = new Date();
+          }
+        });
+      } else if (oldSlotIndex !== undefined && newSlotIndex > oldSlotIndex) {
+        // Moving down - shift participants up
+        courtBookings.forEach((b) => {
+          if (b.slotIndex !== undefined && b.slotIndex > oldSlotIndex && b.slotIndex <= newSlotIndex && b.id !== booking.id) {
+            b.slotIndex = (b.slotIndex || 0) - 1;
+            b.updatedAt = new Date();
+          }
+        });
+      }
+    }
+    
+    // Update the booking's slot index
+    booking.slotIndex = newSlotIndex;
+    booking.updatedAt = new Date();
+  },
 };

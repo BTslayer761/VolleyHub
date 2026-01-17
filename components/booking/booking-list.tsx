@@ -9,7 +9,7 @@ import { StyleSheet } from 'react-native';
 import CourtCard from '@/components/court-card';
 import { ThemedView } from '@/components/themed-view';
 
-import { BookingWithCourt } from '@/app/utils/booking-utils';
+import { BookingWithCourt } from '@/lib/utils/booking-utils';
 
 interface BookingListProps {
   bookings: BookingWithCourt[];

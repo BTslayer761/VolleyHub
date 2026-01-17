@@ -9,7 +9,7 @@ import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-import { BookingWithCourt, formatBookingDate, getBookingStatusColor, getBookingStatusText } from '@/app/utils/booking-utils';
+import { BookingWithCourt, formatBookingDate, getBookingStatusColor, getBookingStatusText } from '@/lib/utils/booking-utils';
 
 interface BookingCardProps {
   bookingWithCourt: BookingWithCourt;
