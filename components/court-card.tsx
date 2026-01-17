@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { mockAuthService } from '@/lib/mocks/auth-mock';
 import { Court, OutdoorCourtStatus } from '@/shared/types/court.types';
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -20,9 +20,10 @@ interface CourtCardProps {
 
 export default function CourtCard({ court, onBookingChange }: CourtCardProps) {
   const colorScheme = useColorScheme();
+  const { hasRole } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const [isStatusModalVisible, setIsStatusModalVisible] = useState(false);
-  const isAdmin = mockAuthService.hasRole('administrator');
+  const isAdmin = hasRole('administrator');
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {

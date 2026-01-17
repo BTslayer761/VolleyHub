@@ -10,8 +10,8 @@ import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 
-// Mock services (temporary - will be replaced with real services during integration)
-import { mockAuthService } from '@/app/mocks/auth-mock';
+// Services
+import { useAuth } from '@/contexts/AuthContext';
 import { mockBookingService } from '@/app/mocks/booking-mock';
 
 // Types
@@ -24,6 +24,7 @@ interface IndoorBookingButtonProps {
 }
 
 export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingButtonProps) {
+  const { user } = useAuth();
   const [bookingStatus, setBookingStatus] = useState<BookingStatus | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [slotIndex, setSlotIndex] = useState<number | undefined>(undefined);
@@ -33,12 +34,11 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
   // Check initial booking status
   useEffect(() => {
     checkBookingStatus();
-  }, [court.id]);
+  }, [court.id, user?.id]);
 
   const checkBookingStatus = async () => {
     try {
       setIsChecking(true);
-      const user = mockAuthService.getCurrentUser();
       if (!user) {
         setIsChecking(false);
         return;
@@ -63,7 +63,6 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
   };
 
   const handleRequest = async () => {
-    const user = mockAuthService.getCurrentUser();
     if (!user) {
       return;
     }

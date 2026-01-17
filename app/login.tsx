@@ -67,55 +67,39 @@ export default function LoginScreen() {
 
   /**
    * Development: Quick sign in as regular user
-   * Bypasses Firebase authentication for development purposes
-   * Note: Role will be handled by AuthContext when fully integrated
+   * Automatically logs in with jarell@gmail.com / jarell
    */
   const handleDevSignInAsUser = async () => {
+    setError('');
+    setLoading(true);
+
     try {
-      // Try Firebase anonymous auth for development (optional)
-      // If Firebase is not configured, this will just navigate
-      try {
-        const { signInAnonymously } = await import('firebase/auth');
-        await signInAnonymously(auth);
-        console.log('Dev mode: Signed in as user (Firebase)');
-      } catch (firebaseError) {
-        // Firebase not available or not configured - skip for dev mode
-        console.log('Dev mode: Bypassing Firebase auth for user');
-      }
-      
-      // Navigate to app with volleyball animation
+      await signInWithEmailAndPassword(auth, 'jarell@gmail.com', 'jarell');
+      setLoading(false);
       setShowVolleyball(true);
-    } catch (err) {
-      // If anything fails, still navigate for dev mode
-      console.log('Dev mode: Navigating to app as user', err);
-      setShowVolleyball(true);
+    } catch (err: any) {
+      setLoading(false);
+      setError('Failed to sign in as user. Please ensure the account exists in Firebase.');
+      console.error('Dev sign in error:', err);
     }
   };
 
   /**
    * Development: Quick sign in as administrator
-   * Bypasses Firebase authentication for development purposes
-   * Note: Role will be handled by AuthContext when fully integrated
+   * Automatically logs in with admin@gmail.com / admin123
    */
   const handleDevSignInAsAdmin = async () => {
+    setError('');
+    setLoading(true);
+
     try {
-      // Try Firebase anonymous auth for development (optional)
-      // If Firebase is not configured, this will just navigate
-      try {
-        const { signInAnonymously } = await import('firebase/auth');
-        await signInAnonymously(auth);
-        console.log('Dev mode: Signed in as admin (Firebase)');
-      } catch (firebaseError) {
-        // Firebase not available or not configured - skip for dev mode
-        console.log('Dev mode: Bypassing Firebase auth for admin');
-      }
-      
-      // Navigate to app with volleyball animation
+      await signInWithEmailAndPassword(auth, 'admin@gmail.com', 'admin123');
+      setLoading(false);
       setShowVolleyball(true);
-    } catch (err) {
-      // If anything fails, still navigate for dev mode
-      console.log('Dev mode: Navigating to app as admin', err);
-      setShowVolleyball(true);
+    } catch (err: any) {
+      setLoading(false);
+      setError('Failed to sign in as admin. Please ensure the account exists in Firebase.');
+      console.error('Dev sign in error:', err);
     }
   };
 

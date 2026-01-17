@@ -5,14 +5,15 @@
 
 import { useEffect, useState, useCallback } from 'react';
 
-// Mock services (temporary - will be replaced with real services during integration)
-import { mockAuthService as mockUserAuthService } from '@/app/mocks/auth-mock';
+// Services
+import { useAuth } from '@/contexts/AuthContext';
 import { mockBookingService } from '@/app/mocks/booking-mock';
 import { courtService } from '@/lib/services/court-service';
 
 import { BookingWithCourt } from '@/app/utils/booking-utils';
 
 export function useBookings() {
+  const { user } = useAuth();
   const [bookings, setBookings] = useState<BookingWithCourt[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -22,8 +23,7 @@ export function useBookings() {
       setLoading(true);
       setError(null);
 
-      // Get current user (using user auth service for bookings)
-      const user = mockUserAuthService.getCurrentUser();
+      // Get current user
       if (!user) {
         setBookings([]);
         setLoading(false);
@@ -55,7 +55,7 @@ export function useBookings() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadBookings();
@@ -66,7 +66,6 @@ export function useBookings() {
    */
   const cancelOutdoorBooking = async (courtId: string) => {
     try {
-      const user = mockUserAuthService.getCurrentUser();
       if (!user) return;
 
       await mockBookingService.cancelOutdoorBooking(courtId, user.id);

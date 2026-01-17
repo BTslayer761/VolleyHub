@@ -9,8 +9,8 @@ import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 
-// Mock services (temporary - will be replaced with real services during integration)
-import { mockAuthService } from '@/app/mocks/auth-mock';
+// Services
+import { useAuth } from '@/contexts/AuthContext';
 import { mockBookingService } from '@/app/mocks/booking-mock';
 
 // Types
@@ -22,6 +22,7 @@ interface OutdoorBookingButtonProps {
 }
 
 export function OutdoorBookingButton({ court, onBookingChange }: OutdoorBookingButtonProps) {
+  const { user } = useAuth();
   const [isGoing, setIsGoing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -29,12 +30,11 @@ export function OutdoorBookingButton({ court, onBookingChange }: OutdoorBookingB
   // Check initial booking status
   useEffect(() => {
     checkBookingStatus();
-  }, [court.id]);
+  }, [court.id, user?.id]);
 
   const checkBookingStatus = async () => {
     try {
       setIsChecking(true);
-      const user = mockAuthService.getCurrentUser();
       if (!user) {
         setIsChecking(false);
         return;
@@ -50,7 +50,6 @@ export function OutdoorBookingButton({ court, onBookingChange }: OutdoorBookingB
   };
 
   const handleToggle = async () => {
-    const user = mockAuthService.getCurrentUser();
     if (!user) {
       return;
     }
