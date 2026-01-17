@@ -13,15 +13,31 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 2. Start the app
 
    ```bash
+   npm start
+   # or
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+3. Run on mobile device
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   - **Install Expo Go** on your phone ([iOS](https://apps.apple.com/app/expo-go/id982107779) | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
+   - Scan the QR code that appears in the terminal
+   - Your app will load on your device!
+
+   Or run on simulator/emulator:
+   - **iOS**: `npm run ios` (Mac only)
+   - **Android**: `npm run android` (requires Android Studio)
+
+## Mobile App Setup
+
+This is a **mobile-first** app built with Expo. See `MOBILE_SETUP.md` for detailed mobile setup instructions.
+
+## Firebase Authentication
+
+To enable login functionality, set up Firebase:
+1. See `FIREBASE_SETUP.md` for step-by-step instructions
+2. Create a `.env` file with your Firebase credentials
+3. Enable Email/Password authentication in Firebase Console
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
