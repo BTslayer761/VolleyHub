@@ -185,7 +185,7 @@ export default function SignupScreen() {
               style={[
                 styles.button,
                 { 
-                  backgroundColor: themeColors.tint,
+                  backgroundColor: colorScheme === 'dark' ? '#0a7ea4' : themeColors.tint,
                   opacity: loading ? 0.6 : 1,
                 }
               ]}
@@ -193,9 +193,9 @@ export default function SignupScreen() {
               activeOpacity={0.8}
               disabled={loading}>
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={textColor} />
               ) : (
-                <ThemedText style={styles.buttonText}>Sign Up</ThemedText>
+                <ThemedText style={[styles.buttonText, { color: textColor }]}>Sign Up</ThemedText>
               )}
             </TouchableOpacity>
           </View>
@@ -286,14 +286,15 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 50,
+    borderWidth: 1,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+    paddingHorizontal: 16,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
 });
