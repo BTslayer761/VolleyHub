@@ -23,16 +23,14 @@ export default function RootLayout() {
           name="login" 
           options={{ 
             headerShown: false,
-            animation: 'fade',
-            animationDuration: 300,
+            animation: 'slide_from_left',
           }} 
         />
         <Stack.Screen 
-          name="success" 
+          name="signup" 
           options={{ 
             headerShown: false,
-            animation: 'fade',
-            animationDuration: 400,
+            animation: 'slide_from_right',
           }} 
         />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

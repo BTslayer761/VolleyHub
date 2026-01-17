@@ -1,69 +1,24 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { ScreenShatter } from '@/components/screen-shatter';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { VolleyballAnimation } from '@/components/volleyball-animation';
 import { auth } from '@/config/firebase';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showVolleyball, setShowVolleyball] = useState(false);
-  const [showShatter, setShowShatter] = useState(false);
   const router = useRouter();
   const colorScheme = useColorScheme();
-
-  const handleLogin = async () => {
-    setError('');
-    setLoading(true);
-
-    try {
-      // Sign in with Firebase
-      await signInWithEmailAndPassword(auth, email, password);
-      
-      // If successful, start volleyball animation
-      setLoading(false);
-      setShowVolleyball(true);
-    } catch (err: any) {
-      setLoading(false);
-      // Handle different Firebase error codes
-      let errorMessage = 'Invalid email or password';
-      
-      if (err.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email';
-      } else if (err.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address';
-      } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many failed attempts. Please try again later';
-      } else if (err.code === 'auth/network-request-failed') {
-        errorMessage = 'Network error. Please check your connection';
-      }
-      
-      setError(errorMessage);
-    }
-  };
-
-  const handleVolleyballHit = () => {
-    // Trigger shatter animation
-    setShowShatter(true);
-  };
-
-  const handleShatterComplete = () => {
-    // Navigate directly to main app tabs
-    router.replace('/(tabs)');
-  };
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -71,6 +26,53 @@ export default function LoginScreen() {
   const borderColor = colorScheme === 'dark' ? '#444' : '#ddd';
   const inputBackgroundColor = colorScheme === 'dark' ? '#222' : '#f9f9f9';
   const placeholderColor = colorScheme === 'dark' ? '#666' : '#999';
+
+  const handleSignup = async () => {
+    setError('');
+
+    // Validation
+    if (!email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Create user with Firebase
+      await createUserWithEmailAndPassword(auth, email, password);
+      
+      // If successful, navigate back to login with slide transition
+      setLoading(false);
+      router.replace('/login');
+    } catch (err: any) {
+      setLoading(false);
+      // Handle different Firebase error codes
+      let errorMessage = 'Failed to create account';
+
+      if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your connection';
+      }
+
+      setError(errorMessage);
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -103,7 +105,7 @@ export default function LoginScreen() {
         style={styles.keyboardView}>
         <View style={styles.content}>
           <ThemedText type="title" style={styles.title}>
-            VolleyHub
+            Sign Up
           </ThemedText>
           
           <View style={styles.form}>
@@ -151,6 +153,28 @@ export default function LoginScreen() {
               />
             </View>
 
+            <View style={styles.inputContainer}>
+              <ThemedText style={styles.label}>Confirm Password</ThemedText>
+              <TextInput
+                style={[
+                  styles.input,
+                  { 
+                    color: textColor, 
+                    borderColor,
+                    backgroundColor: inputBackgroundColor,
+                  }
+                ]}
+                placeholder="Confirm password"
+                placeholderTextColor={placeholderColor}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+              />
+            </View>
+
             {error ? (
               <ThemedText style={[styles.error, { color: '#ff4444' }]}>
                 {error}
@@ -165,37 +189,18 @@ export default function LoginScreen() {
                   opacity: loading ? 0.6 : 1,
                 }
               ]}
-              onPress={handleLogin}
+              onPress={handleSignup}
               activeOpacity={0.8}
               disabled={loading}>
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <ThemedText style={styles.buttonText}>Login</ThemedText>
+                <ThemedText style={styles.buttonText}>Sign Up</ThemedText>
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.signupLink}
-              onPress={() => router.push('/signup')}
-              activeOpacity={0.7}>
-              <ThemedText style={styles.signupText}>Sign up</ThemedText>
             </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
-
-      {showVolleyball && (
-        <VolleyballAnimation onHit={handleVolleyballHit} />
-      )}
-
-      {showVolleyball && (
-        <VolleyballAnimation onHit={handleVolleyballHit} />
-      )}
-
-      {showShatter && (
-        <ScreenShatter onComplete={handleShatterComplete} />
-      )}
     </ThemedView>
   );
 }
@@ -290,13 +295,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
-  },
-  signupLink: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  signupText: {
-    fontSize: 16,
-    textDecorationLine: 'underline',
   },
 });
