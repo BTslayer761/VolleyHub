@@ -8,8 +8,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { mockAuthService } from '@/lib/mocks/auth-mock';
 import { courtService } from '@/lib/services/court-service';
 import { Court, CourtType } from '@/shared/types/court.types';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function CourtsScreen() {
   const colorScheme = useColorScheme();
@@ -17,13 +18,12 @@ export default function CourtsScreen() {
   const [filterType, setFilterType] = useState<CourtType | 'all'>('all');
   const [isPostingModalVisible, setIsPostingModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0); // Key to force refresh of CourtCard components
   const isAdmin = mockAuthService.hasRole('administrator');
+  const loadCourtsRef = useRef<() => Promise<void>>();
 
-  useEffect(() => {
-    loadCourts();
-  }, [filterType]);
-
-  const loadCourts = async () => {
+  // Keep loadCourts ref up to date
+  const loadCourts = useCallback(async () => {
     setIsLoading(true);
     try {
       const filters = filterType !== 'all' ? { type: filterType } : undefined;
@@ -35,7 +35,25 @@ export default function CourtsScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filterType]);
+
+  loadCourtsRef.current = loadCourts;
+
+  useEffect(() => {
+    loadCourts();
+  }, [loadCourts]);
+
+  // Refresh courts and participants when screen comes into focus
+  // This ensures booking changes from home page are reflected here
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh courts list and force CourtCard components to refresh participants
+      if (loadCourtsRef.current) {
+        loadCourtsRef.current();
+      }
+      setRefreshKey((prev) => prev + 1);
+    }, [])
+  );
 
   const handleCourtCreated = () => {
     setIsPostingModalVisible(false);
@@ -141,7 +159,7 @@ export default function CourtsScreen() {
         ) : (
           <ThemedView style={styles.courtsList}>
             {courts.map((court) => (
-              <CourtCard key={court.id} court={court} />
+              <CourtCard key={`${court.id}-${refreshKey}`} court={court} />
             ))}
           </ThemedView>
         )}

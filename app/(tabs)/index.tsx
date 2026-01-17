@@ -1,4 +1,6 @@
 import { Image, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useRef } from 'react';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
@@ -15,6 +17,18 @@ import { useBookings } from '@/hooks/use-bookings';
 
 export default function HomeScreen() {
   const { bookings, loading, refetch } = useBookings();
+  const refetchRef = useRef(refetch);
+  
+  // Keep refetch ref up to date
+  refetchRef.current = refetch;
+
+  // Refresh bookings when screen comes into focus (e.g., returning from Courts tab)
+  useFocusEffect(
+    useCallback(() => {
+      // Use ref to avoid dependency issues
+      refetchRef.current();
+    }, []) // Empty deps - only refetch when screen comes into focus
+  );
 
   return (
     <ParallaxScrollView

@@ -2,7 +2,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { courtService } from '@/lib/services/court-service';
-import { CourtType } from '@/shared/types/court.types';
+import { BookingMode, CourtType } from '@/shared/types/court.types';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -41,6 +41,9 @@ export default function CourtPostingModal({
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [maxSlots, setMaxSlots] = useState('');
+  const [bookingMode, setBookingMode] = useState<BookingMode>('fcfs');
+  const [deadline, setDeadline] = useState('');
+  const [deadlineTime, setDeadlineTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
@@ -51,6 +54,9 @@ export default function CourtPostingModal({
     setEndTime('');
     setMaxSlots('');
     setCourtType('outdoor');
+    setBookingMode('fcfs');
+    setDeadline('');
+    setDeadlineTime('');
   };
 
   const handleClose = () => {
@@ -83,6 +89,16 @@ export default function CourtPostingModal({
       Alert.alert('Validation Error', 'Please enter a valid number of slots for indoor courts');
       return false;
     }
+    if (courtType === 'indoor' && bookingMode === 'priority') {
+      if (!deadline.trim()) {
+        Alert.alert('Validation Error', 'Please enter a deadline date for priority-based courts');
+        return false;
+      }
+      if (!deadlineTime.trim()) {
+        Alert.alert('Validation Error', 'Please enter a deadline time for priority-based courts');
+        return false;
+      }
+    }
     return true;
   };
 
@@ -107,11 +123,20 @@ export default function CourtPostingModal({
         date: courtDate,
         startTime: startTime.trim(),
         endTime: endTime.trim(),
-        bookingMode: courtType === 'indoor' ? 'fcfs' : undefined,
       };
 
-      if (courtType === 'indoor' && maxSlots) {
+      if (courtType === 'indoor') {
+        courtData.bookingMode = bookingMode;
         courtData.maxSlots = parseInt(maxSlots);
+        
+        // Set deadline if priority mode is selected
+        if (bookingMode === 'priority' && deadline.trim() && deadlineTime.trim()) {
+          const deadlineDateStr = `${deadline.trim()}T${deadlineTime.trim()}:00`;
+          const deadlineDate = new Date(deadlineDateStr);
+          if (!isNaN(deadlineDate.getTime())) {
+            courtData.deadline = deadlineDate;
+          }
+        }
       }
 
       await courtService.createCourt(courtData);
@@ -185,7 +210,9 @@ export default function CourtPostingModal({
                       borderColor: Colors[colorScheme ?? 'light'].tint,
                       backgroundColor:
                         courtType === 'outdoor'
-                          ? Colors[colorScheme ?? 'light'].tint + '20'
+                          ? colorScheme === 'dark'
+                            ? '#0a7ea4'
+                            : Colors[colorScheme ?? 'light'].tint + '20'
                           : 'transparent',
                     },
                   ]}
@@ -194,6 +221,7 @@ export default function CourtPostingModal({
                     style={[
                       styles.typeButtonText,
                       courtType === 'outdoor' && styles.typeButtonTextActive,
+                      courtType === 'outdoor' && colorScheme === 'dark' && { color: '#fff' },
                     ]}>
                     Outdoor
                   </ThemedText>
@@ -206,7 +234,9 @@ export default function CourtPostingModal({
                       borderColor: Colors[colorScheme ?? 'light'].tint,
                       backgroundColor:
                         courtType === 'indoor'
-                          ? Colors[colorScheme ?? 'light'].tint + '20'
+                          ? colorScheme === 'dark'
+                            ? '#0a7ea4'
+                            : Colors[colorScheme ?? 'light'].tint + '20'
                           : 'transparent',
                     },
                   ]}
@@ -215,6 +245,7 @@ export default function CourtPostingModal({
                     style={[
                       styles.typeButtonText,
                       courtType === 'indoor' && styles.typeButtonTextActive,
+                      courtType === 'indoor' && colorScheme === 'dark' && { color: '#fff' },
                     ]}>
                     Indoor
                   </ThemedText>
@@ -316,28 +347,141 @@ export default function CourtPostingModal({
               </ThemedView>
             </ThemedView>
 
-            {/* Max Slots (Indoor only) */}
+            {/* Indoor Court Specific Fields */}
             {courtType === 'indoor' && (
-              <ThemedView style={styles.section}>
-                <ThemedText style={styles.label}>Max Number of People *</ThemedText>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: Colors[colorScheme ?? 'light'].text,
-                      borderColor: Colors[colorScheme ?? 'light'].icon + '40',
-                    },
-                  ]}
-                  placeholder="e.g., 12"
-                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
-                  value={maxSlots}
-                  onChangeText={setMaxSlots}
-                  keyboardType="number-pad"
-                />
-                <ThemedText style={styles.helpText}>
-                  Maximum number of people allowed for this indoor court
-                </ThemedText>
-              </ThemedView>
+              <>
+                {/* Max Slots */}
+                <ThemedView style={styles.section}>
+                  <ThemedText style={styles.label}>Max Number of People *</ThemedText>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        color: Colors[colorScheme ?? 'light'].text,
+                        borderColor: Colors[colorScheme ?? 'light'].icon + '40',
+                      },
+                    ]}
+                    placeholder="e.g., 12"
+                    placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                    value={maxSlots}
+                    onChangeText={setMaxSlots}
+                    keyboardType="number-pad"
+                  />
+                  <ThemedText style={styles.helpText}>
+                    Maximum number of people allowed for this indoor court
+                  </ThemedText>
+                </ThemedView>
+
+                {/* Booking Mode Selection */}
+                <ThemedView style={styles.section}>
+                  <ThemedText style={styles.label}>Booking Mode *</ThemedText>
+                  <ThemedView style={styles.typeSelector}>
+                    <TouchableOpacity
+                      style={[
+                        styles.typeButton,
+                        bookingMode === 'fcfs' && styles.typeButtonActive,
+                        {
+                          borderColor: Colors[colorScheme ?? 'light'].tint,
+                          backgroundColor:
+                            bookingMode === 'fcfs'
+                              ? colorScheme === 'dark'
+                                ? '#0a7ea4'
+                                : Colors[colorScheme ?? 'light'].tint + '20'
+                              : 'transparent',
+                        },
+                      ]}
+                      onPress={() => {
+                        setBookingMode('fcfs');
+                        setDeadline('');
+                        setDeadlineTime('');
+                      }}>
+                      <ThemedText
+                        style={[
+                          styles.typeButtonText,
+                          bookingMode === 'fcfs' && styles.typeButtonTextActive,
+                          bookingMode === 'fcfs' && colorScheme === 'dark' && { color: '#fff' },
+                        ]}>
+                        Ad-hoc (FCFS)
+                      </ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.typeButton,
+                        bookingMode === 'priority' && styles.typeButtonActive,
+                        {
+                          borderColor: Colors[colorScheme ?? 'light'].tint,
+                          backgroundColor:
+                            bookingMode === 'priority'
+                              ? colorScheme === 'dark'
+                                ? '#0a7ea4'
+                                : Colors[colorScheme ?? 'light'].tint + '20'
+                              : 'transparent',
+                        },
+                      ]}
+                      onPress={() => setBookingMode('priority')}>
+                      <ThemedText
+                        style={[
+                          styles.typeButtonText,
+                          bookingMode === 'priority' && styles.typeButtonTextActive,
+                          bookingMode === 'priority' && colorScheme === 'dark' && { color: '#fff' },
+                        ]}>
+                        Priority
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </ThemedView>
+                  <ThemedText style={styles.helpText}>
+                    {bookingMode === 'fcfs'
+                      ? 'First-come-first-served booking'
+                      : 'Priority-based sorting with weekly preferences'}
+                  </ThemedText>
+                </ThemedView>
+
+                {/* Deadline (Priority mode only) */}
+                {bookingMode === 'priority' && (
+                  <ThemedView style={styles.section}>
+                    <ThemedText style={styles.label}>Deadline for Name List Generation *</ThemedText>
+                    <ThemedView style={styles.timeRow}>
+                      <ThemedView style={styles.timeInputContainer}>
+                        <ThemedText style={styles.label}>Date *</ThemedText>
+                        <TextInput
+                          style={[
+                            styles.input,
+                            styles.timeInput,
+                            {
+                              color: Colors[colorScheme ?? 'light'].text,
+                              borderColor: Colors[colorScheme ?? 'light'].icon + '40',
+                            },
+                          ]}
+                          placeholder="YYYY-MM-DD"
+                          placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                          value={deadline}
+                          onChangeText={setDeadline}
+                        />
+                      </ThemedView>
+                      <ThemedView style={styles.timeInputContainer}>
+                        <ThemedText style={styles.label}>Time *</ThemedText>
+                        <TextInput
+                          style={[
+                            styles.input,
+                            styles.timeInput,
+                            {
+                              color: Colors[colorScheme ?? 'light'].text,
+                              borderColor: Colors[colorScheme ?? 'light'].icon + '40',
+                            },
+                          ]}
+                          placeholder="HH:MM"
+                          placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                          value={deadlineTime}
+                          onChangeText={setDeadlineTime}
+                        />
+                      </ThemedView>
+                    </ThemedView>
+                    <ThemedText style={styles.helpText}>
+                      Name list will be automatically generated after this deadline
+                    </ThemedText>
+                  </ThemedView>
+                )}
+              </>
             )}
 
             {/* Submit Button */}
