@@ -3,7 +3,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { courtService } from '@/lib/services/court-service';
 import { BookingMode, CourtType } from '@/shared/types/court.types';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Dimensions,
@@ -35,8 +35,8 @@ export default function CourtPostingModal({
   const colorScheme = useColorScheme();
   const backgroundColor = useThemeColor({}, 'background');
   const [courtType, setCourtType] = useState<CourtType>('outdoor');
-  const [name, setName] = useState('');
-  const [location, setLocation] = useState('');
+  const [name, setName] = useState('Outdoor Volleyball Court');
+  const [location, setLocation] = useState('USC Volleyball Court');
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -47,8 +47,6 @@ export default function CourtPostingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
-    setName('');
-    setLocation('');
     setDate('');
     setStartTime('');
     setEndTime('');
@@ -57,7 +55,22 @@ export default function CourtPostingModal({
     setBookingMode('fcfs');
     setDeadline('');
     setDeadlineTime('');
+    // Set outdoor court fixed values
+    setName('Outdoor Volleyball Court');
+    setLocation('USC Volleyball Court');
   };
+
+  // When court type changes to outdoor, set locked values
+  useEffect(() => {
+    if (courtType === 'outdoor') {
+      setName('Outdoor Volleyball Court');
+      setLocation('USC Volleyball Court');
+    } else {
+      // When switching to indoor, clear the values if they were the locked outdoor values
+      setName('');
+      setLocation('');
+    }
+  }, [courtType]);
 
   const handleClose = () => {
     resetForm();
@@ -85,6 +98,60 @@ export default function CourtPostingModal({
       Alert.alert('Validation Error', 'Please enter an end time');
       return false;
     }
+
+    // Date validation: Must be in YYYY-MM-DD format and not in the past
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date.trim())) {
+      Alert.alert('Validation Error', 'Date must be in YYYY-MM-DD format (e.g., 2026-01-25)');
+      return false;
+    }
+    
+    const courtDate = new Date(date.trim());
+    if (isNaN(courtDate.getTime())) {
+      Alert.alert('Validation Error', 'Please enter a valid date');
+      return false;
+    }
+
+    // Date must not be in the past (allow today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    courtDate.setHours(0, 0, 0, 0);
+    if (courtDate < today) {
+      Alert.alert('Validation Error', 'Date cannot be in the past. Please select today or a future date.');
+      return false;
+    }
+
+    // Time validation: Must be in HH:MM format
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(startTime.trim())) {
+      Alert.alert('Validation Error', 'Start time must be in HH:MM format (e.g., 18:00)');
+      return false;
+    }
+    if (!timeRegex.test(endTime.trim())) {
+      Alert.alert('Validation Error', 'End time must be in HH:MM format (e.g., 20:00)');
+      return false;
+    }
+
+    // End time must be after start time
+    const [startHour, startMin] = startTime.trim().split(':').map(Number);
+    const [endHour, endMin] = endTime.trim().split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    if (endMinutes <= startMinutes) {
+      Alert.alert('Validation Error', 'End time must be after start time');
+      return false;
+    }
+
+    // Validate time range (e.g., must be within reasonable hours like 06:00 to 23:59)
+    if (startMinutes < 360 || startMinutes > 1439) { // 6:00 AM to 11:59 PM
+      Alert.alert('Validation Error', 'Start time must be between 06:00 and 23:59');
+      return false;
+    }
+    if (endMinutes < 360 || endMinutes > 1439) {
+      Alert.alert('Validation Error', 'End time must be between 06:00 and 23:59');
+      return false;
+    }
+
     if (courtType === 'indoor' && (!maxSlots.trim() || parseInt(maxSlots) <= 0)) {
       Alert.alert('Validation Error', 'Please enter a valid number of slots for indoor courts');
       return false;
@@ -96,6 +163,26 @@ export default function CourtPostingModal({
       }
       if (!deadlineTime.trim()) {
         Alert.alert('Validation Error', 'Please enter a deadline time for priority-based courts');
+        return false;
+      }
+      // Validate deadline date format
+      if (!dateRegex.test(deadline.trim())) {
+        Alert.alert('Validation Error', 'Deadline date must be in YYYY-MM-DD format');
+        return false;
+      }
+      const deadlineDate = new Date(deadline.trim());
+      if (isNaN(deadlineDate.getTime())) {
+        Alert.alert('Validation Error', 'Please enter a valid deadline date');
+        return false;
+      }
+      // Deadline must be before the court date
+      if (deadlineDate >= courtDate) {
+        Alert.alert('Validation Error', 'Deadline must be before the court date');
+        return false;
+      }
+      // Validate deadline time format
+      if (!timeRegex.test(deadlineTime.trim())) {
+        Alert.alert('Validation Error', 'Deadline time must be in HH:MM format');
         return false;
       }
     }
@@ -263,12 +350,19 @@ export default function CourtPostingModal({
                     color: Colors[colorScheme ?? 'light'].text,
                     borderColor: Colors[colorScheme ?? 'light'].icon + '40',
                   },
+                  courtType === 'outdoor' && styles.inputDisabled,
                 ]}
-                placeholder="e.g., Outdoor Volleyball Court"
+                placeholder={courtType === 'outdoor' ? '' : 'e.g., Indoor Court Name'}
                 placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
                 value={name}
                 onChangeText={setName}
+                editable={courtType !== 'outdoor'}
               />
+              {courtType === 'outdoor' && (
+                <ThemedText style={styles.helpText}>
+                  Court name is fixed for outdoor courts
+                </ThemedText>
+              )}
             </ThemedView>
 
             {/* Location */}
@@ -281,12 +375,19 @@ export default function CourtPostingModal({
                     color: Colors[colorScheme ?? 'light'].text,
                     borderColor: Colors[colorScheme ?? 'light'].icon + '40',
                   },
+                  courtType === 'outdoor' && styles.inputDisabled,
                 ]}
-                placeholder="e.g., USC Volleyball Court"
+                placeholder={courtType === 'outdoor' ? '' : 'e.g., Indoor Location'}
                 placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
                 value={location}
                 onChangeText={setLocation}
+                editable={courtType !== 'outdoor'}
               />
+              {courtType === 'outdoor' && (
+                <ThemedText style={styles.helpText}>
+                  Location is fixed for outdoor courts
+                </ThemedText>
+              )}
             </ThemedView>
 
             {/* Date */}
@@ -596,6 +697,10 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     minHeight: 48,
+  },
+  inputDisabled: {
+    opacity: 0.6,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   timeRow: {
     flexDirection: 'row',

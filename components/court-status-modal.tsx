@@ -11,14 +11,14 @@ import { courtService } from '@/lib/services/court-service';
 import { OutdoorCourtStatus } from '@/shared/types/court.types';
 import React, { useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
+    Alert,
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
 } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -165,36 +165,33 @@ export default function CourtStatusModal({
                     return (
                       <TouchableOpacity
                         key={option.value}
-                        style={[
-                          styles.statusOption,
-                          isSelected && styles.statusOptionActive,
-                          {
-                            borderColor: statusColor,
-                            borderWidth: isSelected ? 2 : 1,
-                            backgroundColor: isSelected ? statusColor + (colorScheme === 'dark' ? '30' : '20') : 'transparent',
-                          },
-                        ]}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: 16,
+                          borderRadius: 12,
+                          borderColor: statusColor,
+                          borderWidth: isSelected ? 2 : 1,
+                          backgroundColor: statusColor + (colorScheme === 'dark' ? '20' : '15'),
+                          minHeight: 70,
+                        }}
                         onPress={() => setSelectedStatus(option.value)}>
-                        <ThemedView style={styles.statusOptionContent}>
+                        <ThemedView style={[styles.statusOptionContent, { backgroundColor: 'transparent' }]}>
                           <ThemedText
-                            style={[
-                              styles.statusOptionLabel,
-                              {
-                                color: statusColor,
-                                fontWeight: isSelected ? '700' : '600',
-                                opacity: isSelected ? 1 : 0.7,
-                              },
-                            ]}>
+                            style={{
+                              fontWeight: isSelected ? '700' : '600',
+                              opacity: isSelected ? 1 : 0.7,
+                              fontSize: 16,
+                              marginBottom: 4,
+                            }}>
                             {option.label}
                           </ThemedText>
                           <ThemedText
-                            style={[
-                              styles.statusOptionDescription,
-                              {
-                                color: statusColor,
-                                opacity: isSelected ? (colorScheme === 'dark' ? 0.9 : 0.7) : 0.6,
-                              },
-                            ]}>
+                            style={{
+                              opacity: isSelected ? 0.8 : 0.6,
+                              fontSize: 14,
+                            }}>
                             {option.description}
                           </ThemedText>
                         </ThemedView>
@@ -334,13 +331,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statusOptionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    // Styles moved to inline to ensure color precedence
   },
   statusOptionDescription: {
-    fontSize: 14,
-    opacity: 0.7,
+    // Styles moved to inline to ensure color precedence
   },
   submitButton: {
     paddingVertical: 16,
