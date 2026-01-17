@@ -7,7 +7,27 @@
  * Purpose: Allow development and testing of the booking UI without a backend.
  */
 
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 import { BookingService, Booking, Participant, BookingStatus } from '@/shared/types/booking.types';
+
+// Helper function to get user name from Firestore
+const getUserName = async (userId: string): Promise<string> => {
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      return userData.name || 'User';
+    }
+    // Fallback if user document doesn't exist
+    return 'User';
+  } catch (error) {
+    console.error('Error fetching user name from Firestore:', error);
+    return 'User';
+  }
+};
 
 // Mock booking data - stored in memory for development
 const mockBookings: Booking[] = [
@@ -103,12 +123,20 @@ export const mockBookingService: BookingService = {
   getCourtParticipants: async (courtId: string): Promise<Participant[]> => {
     const courtBookings = mockBookings.filter((b) => b.courtId === courtId);
     
-    return courtBookings.map((booking) => ({
-      userId: booking.userId,
-      userName: 'Mock User', // In real app, fetch from user service
-      slotIndex: booking.slotIndex,
-      status: booking.status || 'confirmed',
-    }));
+    // Fetch user names for all participants
+    const participants = await Promise.all(
+      courtBookings.map(async (booking) => {
+        const userName = await getUserName(booking.userId);
+        return {
+          userId: booking.userId,
+          userName: userName,
+          slotIndex: booking.slotIndex,
+          status: booking.status || 'confirmed',
+        };
+      })
+    );
+    
+    return participants;
   },
 
   /**

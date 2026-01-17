@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { Auth, getAuth } from 'firebase/auth';
+import { Firestore, getFirestore } from 'firebase/firestore';
 
 // Your Firebase configuration
 // Replace these values with your Firebase project config
@@ -18,4 +19,8 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase Authentication and get a reference to the service
 export const auth: Auth = getAuth(app);
+
+// Initialize Firestore and get a reference to the service
+export const db: Firestore = getFirestore(app);
+
 export default app;
