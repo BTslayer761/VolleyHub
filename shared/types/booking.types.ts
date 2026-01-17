@@ -65,4 +65,10 @@ export interface BookingService {
    * Get booking status for a specific court and user
    */
   getBookingStatus(courtId: string, userId: string): Promise<Booking | null>;
+
+  /**
+   * Move a participant to a different slot position (Admin only)
+   * For indoor courts - reorders slot assignments
+   */
+  moveParticipant(courtId: string, userId: string, newSlotIndex: number): Promise<void>;
 }

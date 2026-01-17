@@ -6,14 +6,18 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Collapsible } from '@/components/ui/collapsible';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/AuthContext';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // Mock services (temporary - will be replaced with real services during integration)
-import { mockBookingService } from '@/app/mocks/booking-mock';
+import { mockBookingService } from '@/lib/mocks/booking-mock';
 
 // Types
 import { BookingStatus, Participant } from '@/shared/types/booking.types';
@@ -26,9 +30,13 @@ interface ParticipantsListProps {
 }
 
 export function ParticipantsList({ court, showTitle = true, onRefresh }: ParticipantsListProps) {
+  const { hasRole } = useAuth();
+  const colorScheme = useColorScheme();
+  const isAdmin = hasRole('administrator');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [movingParticipant, setMovingParticipant] = useState<string | null>(null);
 
   useEffect(() => {
     loadParticipants();
@@ -105,6 +113,44 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
     }
   };
 
+  const handleMoveParticipant = async (userId: string, direction: 'up' | 'down') => {
+    if (movingParticipant) return; // Prevent concurrent moves
+    
+    const participant = participants.find((p) => p.userId === userId);
+    if (!participant || participant.slotIndex === undefined) return;
+
+    const currentIndex = participant.slotIndex;
+    const newSlotIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+    // Validate bounds
+    if (newSlotIndex < 1) return; // Can't move above slot 1
+    const maxSlot = Math.max(...participants.map((p) => p.slotIndex || 0));
+    if (newSlotIndex > maxSlot) return; // Can't move below last slot
+
+    try {
+      setMovingParticipant(userId);
+      await mockBookingService.moveParticipant(court.id, userId, newSlotIndex);
+      await loadParticipants(); // Reload to reflect changes
+      onRefresh?.(); // Notify parent to refresh
+    } catch (err) {
+      Alert.alert('Error', 'Failed to move participant. Please try again.');
+      console.error('Error moving participant:', err);
+    } finally {
+      setMovingParticipant(null);
+    }
+  };
+
+  const canMoveUp = (participant: Participant): boolean => {
+    if (!participant.slotIndex) return false;
+    return participant.slotIndex > 1;
+  };
+
+  const canMoveDown = (participant: Participant): boolean => {
+    if (!participant.slotIndex) return false;
+    const maxSlot = Math.max(...participants.map((p) => p.slotIndex || 0));
+    return participant.slotIndex < maxSlot;
+  };
+
   if (loading) {
     return (
       <ThemedView style={styles.container}>
@@ -157,6 +203,8 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
           {participants.map((participant, index) => {
             const statusColor = getStatusColor(participant.status);
             const statusText = getStatusText(participant.status);
+            const isMoving = movingParticipant === participant.userId;
+            const showMoveControls = isIndoor && isAdmin && participant.slotIndex !== undefined;
 
             return (
               <ThemedView key={participant.userId} style={styles.participantItem}>
@@ -169,11 +217,57 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
                   )}
                 </ThemedView>
                 
-                <ThemedView
-                  style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
-                  <ThemedText style={[styles.statusText, { color: statusColor }]}>
-                    {statusText}
-                  </ThemedText>
+                <ThemedView style={styles.rightSection}>
+                  <ThemedView
+                    style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                    <ThemedText style={[styles.statusText, { color: statusColor }]}>
+                      {statusText}
+                    </ThemedText>
+                  </ThemedView>
+
+                  {/* Admin Move Controls (Indoor courts only) */}
+                  {showMoveControls && (
+                    <ThemedView style={styles.moveControls}>
+                      <TouchableOpacity
+                        style={[
+                          styles.moveButton,
+                          !canMoveUp(participant) && styles.moveButtonDisabled,
+                          { borderColor: Colors[colorScheme ?? 'light'].tint },
+                        ]}
+                        onPress={() => handleMoveParticipant(participant.userId, 'up')}
+                        disabled={!canMoveUp(participant) || isMoving}
+                        activeOpacity={0.7}>
+                        <IconSymbol
+                          name="chevron.up"
+                          size={16}
+                          color={
+                            canMoveUp(participant) && !isMoving
+                              ? Colors[colorScheme ?? 'light'].tint
+                              : '#9CA3AF'
+                          }
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.moveButton,
+                          !canMoveDown(participant) && styles.moveButtonDisabled,
+                          { borderColor: Colors[colorScheme ?? 'light'].tint },
+                        ]}
+                        onPress={() => handleMoveParticipant(participant.userId, 'down')}
+                        disabled={!canMoveDown(participant) || isMoving}
+                        activeOpacity={0.7}>
+                        <IconSymbol
+                          name="chevron.down"
+                          size={16}
+                          color={
+                            canMoveDown(participant) && !isMoving
+                              ? Colors[colorScheme ?? 'light'].tint
+                              : '#9CA3AF'
+                          }
+                        />
+                      </TouchableOpacity>
+                    </ThemedView>
+                  )}
                 </ThemedView>
               </ThemedView>
             );
@@ -213,11 +307,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
   },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
-    marginLeft: 12,
+  },
+  moveControls: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  moveButton: {
+    padding: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 32,
+    minHeight: 32,
+  },
+  moveButtonDisabled: {
+    opacity: 0.4,
   },
   statusText: {
     fontSize: 12,

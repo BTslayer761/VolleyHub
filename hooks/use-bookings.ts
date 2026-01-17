@@ -7,10 +7,10 @@ import { useEffect, useState, useCallback } from 'react';
 
 // Services
 import { useAuth } from '@/contexts/AuthContext';
-import { mockBookingService } from '@/app/mocks/booking-mock';
+import { mockBookingService } from '@/lib/mocks/booking-mock';
 import { courtService } from '@/lib/services/court-service';
 
-import { BookingWithCourt } from '@/app/utils/booking-utils';
+import { BookingWithCourt } from '@/lib/utils/booking-utils';
 
 export function useBookings() {
   const { user } = useAuth();

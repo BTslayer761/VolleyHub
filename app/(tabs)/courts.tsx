@@ -4,9 +4,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { mockAuthService } from '@/lib/mocks/auth-mock';
-import { courtService } from '@/lib/services/court-service';
+import { subscribeToCourts } from '@/lib/services/court-service';
 import { Court, CourtType } from '@/shared/types/court.types';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
@@ -14,50 +14,57 @@ import { useFocusEffect } from '@react-navigation/native';
 
 export default function CourtsScreen() {
   const colorScheme = useColorScheme();
+  const { hasRole } = useAuth();
   const [courts, setCourts] = useState<Court[]>([]);
   const [filterType, setFilterType] = useState<CourtType | 'all'>('all');
   const [isPostingModalVisible, setIsPostingModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0); // Key to force refresh of CourtCard components
-  const isAdmin = mockAuthService.hasRole('administrator');
-  const loadCourtsRef = useRef<() => Promise<void>>();
+  const isAdmin = hasRole('administrator');
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
-  // Keep loadCourts ref up to date
-  const loadCourts = useCallback(async () => {
+  // Set up real-time subscription to courts
+  useEffect(() => {
     setIsLoading(true);
-    try {
-      const filters = filterType !== 'all' ? { type: filterType } : undefined;
-      const fetchedCourts = await courtService.getCourts(filters);
-      setCourts(fetchedCourts);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load courts');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
+    
+    // Unsubscribe from previous subscription if it exists
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
     }
+
+    // Set up new real-time subscription
+    const filters = filterType !== 'all' ? { type: filterType } : undefined;
+    const unsubscribe = subscribeToCourts(
+      (updatedCourts) => {
+        setCourts(updatedCourts);
+        setIsLoading(false);
+      },
+      filters
+    );
+
+    unsubscribeRef.current = unsubscribe;
+
+    // Cleanup on unmount or filter change
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, [filterType]);
 
-  loadCourtsRef.current = loadCourts;
-
-  useEffect(() => {
-    loadCourts();
-  }, [loadCourts]);
-
-  // Refresh courts and participants when screen comes into focus
+  // Refresh participants when screen comes into focus
   // This ensures booking changes from home page are reflected here
   useFocusEffect(
     useCallback(() => {
-      // Refresh courts list and force CourtCard components to refresh participants
-      if (loadCourtsRef.current) {
-        loadCourtsRef.current();
-      }
+      // Force CourtCard components to refresh participants
       setRefreshKey((prev) => prev + 1);
     }, [])
   );
 
   const handleCourtCreated = () => {
     setIsPostingModalVisible(false);
-    loadCourts(); // Reload courts after posting
+    // No need to manually reload - real-time listener will update automatically
   };
 
   const formatDate = (date: Date) => {
