@@ -4,8 +4,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { mockAuthService } from '@/lib/mocks/auth-mock';
 import { courtService } from '@/lib/services/court-service';
 import { Court, CourtType } from '@/shared/types/court.types';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -14,12 +14,13 @@ import { useFocusEffect } from '@react-navigation/native';
 
 export default function CourtsScreen() {
   const colorScheme = useColorScheme();
+  const { hasRole } = useAuth();
   const [courts, setCourts] = useState<Court[]>([]);
   const [filterType, setFilterType] = useState<CourtType | 'all'>('all');
   const [isPostingModalVisible, setIsPostingModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0); // Key to force refresh of CourtCard components
-  const isAdmin = mockAuthService.hasRole('administrator');
+  const isAdmin = hasRole('administrator');
   const loadCourtsRef = useRef<() => Promise<void>>();
 
   // Keep loadCourts ref up to date
