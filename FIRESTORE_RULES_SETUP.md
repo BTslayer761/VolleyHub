@@ -14,7 +14,7 @@ This error means your Firestore security rules are blocking access. Here's how t
 
 ### Step 2: Update Rules for Development
 
-Copy and paste these rules:
+Copy and paste these rules (includes courts collection):
 
 ```javascript
 rules_version = '2';
@@ -27,6 +27,15 @@ service cloud.firestore {
       // Allow users to write their own data, or allow creation during signup
       allow write: if request.auth != null && 
         (request.auth.uid == userId || !exists(/databases/$(database)/documents/users/$(userId)));
+    }
+    
+    // Courts collection - real-time court data
+    match /courts/{courtId} {
+      // Anyone authenticated can read courts (for viewing)
+      allow read: if request.auth != null;
+      // Only administrators can create, update, or delete courts
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'administrator';
     }
     
     // For development: Allow all authenticated users to read/write (remove in production!)
@@ -77,8 +86,16 @@ service cloud.firestore {
       allow create: if request.auth != null;
     }
     
+    // Courts collection
+    match /courts/{courtId} {
+      // Anyone authenticated can read courts
+      allow read: if request.auth != null;
+      // Only administrators can create, update, or delete courts
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'administrator';
+    }
+    
     // Add other collections here as needed
-    // match /courts/{courtId} { ... }
     // match /bookings/{bookingId} { ... }
   }
 }
