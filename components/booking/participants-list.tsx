@@ -12,7 +12,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Collapsible } from '@/components/ui/collapsible';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -251,7 +250,7 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
                     <TouchableOpacity
                       style={[
                         styles.deleteButton,
-                        { backgroundColor: Colors.light.error },
+                        { backgroundColor: '#dc2626' }, // Red error color
                         isDeleting && styles.deleteButtonDisabled,
                       ]}
                       onPress={() => handleDeleteParticipant(participant)}
