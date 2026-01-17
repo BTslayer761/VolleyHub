@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 
@@ -50,29 +50,58 @@ export function OutdoorBookingButton({ court, onBookingChange }: OutdoorBookingB
   };
 
   const handleToggle = async () => {
-    try {
-      setIsLoading(true);
-      const user = mockAuthService.getCurrentUser();
-      if (!user) {
-        return;
-      }
+    const user = mockAuthService.getCurrentUser();
+    if (!user) {
+      return;
+    }
 
-      if (isGoing) {
-        // Cancel booking
-        await mockBookingService.cancelOutdoorBooking(court.id, user.id);
-        setIsGoing(false);
-      } else {
-        // Create booking
+    // If user is already going, show confirmation before canceling
+    if (isGoing) {
+      Alert.alert(
+        'Cancel Booking',
+        `Are you sure you want to cancel your booking for ${court.name}?`,
+        [
+          {
+            text: 'No',
+            style: 'cancel',
+            onPress: () => {
+              // User cancelled, do nothing
+            },
+          },
+          {
+            text: 'Yes, Cancel',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setIsLoading(true);
+                await mockBookingService.cancelOutdoorBooking(court.id, user.id);
+                setIsGoing(false);
+                // Notify parent component of change
+                onBookingChange?.();
+              } catch (error) {
+                console.error('Error canceling booking:', error);
+                Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+              } finally {
+                setIsLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      // Create booking without confirmation
+      try {
+        setIsLoading(true);
         await mockBookingService.createOutdoorBooking(court.id, user.id);
         setIsGoing(true);
+        // Notify parent component of change
+        onBookingChange?.();
+      } catch (error) {
+        console.error('Error creating booking:', error);
+        Alert.alert('Error', 'Failed to create booking. Please try again.');
+      } finally {
+        setIsLoading(false);
       }
-
-      // Notify parent component of change
-      onBookingChange?.();
-    } catch (error) {
-      console.error('Error toggling booking:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 

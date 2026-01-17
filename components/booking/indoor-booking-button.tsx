@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 
@@ -63,33 +63,62 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
   };
 
   const handleRequest = async () => {
-    try {
-      setIsLoading(true);
-      const user = mockAuthService.getCurrentUser();
-      if (!user) {
-        return;
-      }
+    const user = mockAuthService.getCurrentUser();
+    if (!user) {
+      return;
+    }
 
-      // If already booked, cancel it
-      if (bookingId) {
-        await mockBookingService.cancelIndoorBooking(bookingId);
-        setBookingStatus(null);
-        setBookingId(null);
-        setSlotIndex(undefined);
-      } else {
-        // Request a new slot
+    // If already booked, show confirmation before canceling
+    if (bookingId) {
+      Alert.alert(
+        'Cancel Booking',
+        `Are you sure you want to cancel your slot booking for ${court.name}?`,
+        [
+          {
+            text: 'No',
+            style: 'cancel',
+            onPress: () => {
+              // User cancelled, do nothing
+            },
+          },
+          {
+            text: 'Yes, Cancel',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setIsLoading(true);
+                await mockBookingService.cancelIndoorBooking(bookingId);
+                setBookingStatus(null);
+                setBookingId(null);
+                setSlotIndex(undefined);
+                // Notify parent component of change
+                onBookingChange?.();
+              } catch (error) {
+                console.error('Error canceling booking:', error);
+                Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+              } finally {
+                setIsLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      // Request a new slot without confirmation
+      try {
+        setIsLoading(true);
         const booking = await mockBookingService.requestIndoorSlot(court.id, user.id);
         setBookingStatus(booking.status || 'pending');
         setBookingId(booking.id);
         setSlotIndex(booking.slotIndex);
+        // Notify parent component of change
+        onBookingChange?.();
+      } catch (error) {
+        console.error('Error requesting slot:', error);
+        Alert.alert('Error', 'Failed to request slot. Please try again.');
+      } finally {
+        setIsLoading(false);
       }
-
-      // Notify parent component of change
-      onBookingChange?.();
-    } catch (error) {
-      console.error('Error requesting/canceling booking:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 

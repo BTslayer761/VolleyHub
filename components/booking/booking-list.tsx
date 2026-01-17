@@ -1,30 +1,28 @@
 /**
  * BookingList Component
- * Displays a list of booking cards
+ * Displays a list of courts using CourtCard component
+ * Shows courts that the user has bookings for
  */
 
 import { StyleSheet } from 'react-native';
 
+import CourtCard from '@/components/court-card';
 import { ThemedView } from '@/components/themed-view';
 
 import { BookingWithCourt } from '@/app/utils/booking-utils';
-import { BookingCard } from './booking-card';
 
 interface BookingListProps {
   bookings: BookingWithCourt[];
-  onCancel: (bookingId: string, courtId: string, isOutdoor: boolean) => Promise<void>;
 }
 
-export function BookingList({ bookings, onCancel }: BookingListProps) {
+export function BookingList({ bookings }: BookingListProps) {
   return (
     <ThemedView style={styles.container}>
-      {bookings.map(({ booking, court }) => (
-        <BookingCard
-          key={booking.id}
-          bookingWithCourt={{ booking, court }}
-          onCancel={onCancel}
-        />
-      ))}
+      {bookings
+        .filter(({ court }) => court !== null) // Filter out null courts
+        .map(({ booking, court }) => (
+          <CourtCard key={booking.id} court={court!} />
+        ))}
     </ThemedView>
   );
 }

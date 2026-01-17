@@ -14,15 +14,7 @@ import { BookingLoadingState } from '@/components/booking/booking-loading-state'
 import { useBookings } from '@/hooks/use-bookings';
 
 export default function HomeScreen() {
-  const { bookings, loading, cancelOutdoorBooking, cancelIndoorBooking } = useBookings();
-
-  const handleCancel = async (bookingId: string, courtId: string, isOutdoor: boolean) => {
-    if (isOutdoor) {
-      await cancelOutdoorBooking(courtId);
-    } else {
-      await cancelIndoorBooking(bookingId);
-    }
-  };
+  const { bookings, loading } = useBookings();
 
   return (
     <ParallaxScrollView
@@ -43,7 +35,7 @@ export default function HomeScreen() {
       ) : bookings.length === 0 ? (
         <BookingEmptyState />
       ) : (
-        <BookingList bookings={bookings} onCancel={handleCancel} />
+        <BookingList bookings={bookings} />
       )}
     </ParallaxScrollView>
   );
