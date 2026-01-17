@@ -143,18 +143,14 @@ export const courtService: CourtService = {
       const courtsRef = collection(db, 'courts');
       let q: Query = query(courtsRef, orderBy('date', 'asc'));
 
-      // Apply filters
+      // Apply date filters (type and location filters applied client-side to avoid composite index)
       if (filters) {
-        if (filters.type) {
-          q = query(q, where('type', '==', filters.type));
-        }
         if (filters.dateFrom) {
           q = query(q, where('date', '>=', Timestamp.fromDate(filters.dateFrom)));
         }
         if (filters.dateTo) {
           q = query(q, where('date', '<=', Timestamp.fromDate(filters.dateTo)));
         }
-        // Note: location filter is applied in-memory after fetching
       }
 
       const querySnapshot = await getDocs(q);
@@ -165,12 +161,17 @@ export const courtService: CourtService = {
         courts.push(court);
       });
 
-      // Apply location filter in-memory if needed
+      // Apply client-side filters (type and location) to avoid composite index requirement
       let filteredCourts = courts;
-      if (filters?.location) {
-        filteredCourts = courts.filter((court) =>
-          court.location.toLowerCase().includes(filters.location!.toLowerCase())
-        );
+      if (filters) {
+        if (filters.type) {
+          filteredCourts = filteredCourts.filter((court) => court.type === filters.type);
+        }
+        if (filters.location) {
+          filteredCourts = filteredCourts.filter((court) =>
+            court.location.toLowerCase().includes(filters.location!.toLowerCase())
+          );
+        }
       }
 
       return filteredCourts;
@@ -281,11 +282,8 @@ export function subscribeToCourts(
     const courtsRef = collection(db, 'courts');
     let q: Query = query(courtsRef, orderBy('date', 'asc'));
 
-    // Apply filters
+    // Apply date filters only (type and location filters applied client-side to avoid composite index)
     if (filters) {
-      if (filters.type) {
-        q = query(q, where('type', '==', filters.type));
-      }
       if (filters.dateFrom) {
         q = query(q, where('date', '>=', Timestamp.fromDate(filters.dateFrom)));
       }
@@ -304,12 +302,17 @@ export function subscribeToCourts(
           courts.push(court);
         });
 
-        // Apply location filter in-memory if needed
+        // Apply client-side filters (type and location) to avoid composite index requirement
         let filteredCourts = courts;
-        if (filters?.location) {
-          filteredCourts = courts.filter((court) =>
-            court.location.toLowerCase().includes(filters.location!.toLowerCase())
-          );
+        if (filters) {
+          if (filters.type) {
+            filteredCourts = filteredCourts.filter((court) => court.type === filters.type);
+          }
+          if (filters.location) {
+            filteredCourts = filteredCourts.filter((court) =>
+              court.location.toLowerCase().includes(filters.location!.toLowerCase())
+            );
+          }
         }
 
         callback(filteredCourts);
