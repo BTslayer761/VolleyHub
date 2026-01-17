@@ -3,7 +3,6 @@ import { Image } from 'expo-image';
 import { useCallback, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -43,7 +42,6 @@ export default function HomeScreen() {
       }>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">My Bookings</ThemedText>
-        <HelloWave />
       </ThemedView>
 
       {loading ? (
