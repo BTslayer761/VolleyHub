@@ -13,15 +13,16 @@ import { BookingWithCourt } from '@/app/utils/booking-utils';
 
 interface BookingListProps {
   bookings: BookingWithCourt[];
+  onRefresh?: () => void; // Callback to refresh bookings list
 }
 
-export function BookingList({ bookings }: BookingListProps) {
+export function BookingList({ bookings, onRefresh }: BookingListProps) {
   return (
     <ThemedView style={styles.container}>
       {bookings
         .filter(({ court }) => court !== null) // Filter out null courts
         .map(({ booking, court }) => (
-          <CourtCard key={booking.id} court={court!} />
+          <CourtCard key={booking.id} court={court!} onBookingChange={onRefresh} />
         ))}
     </ThemedView>
   );

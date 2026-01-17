@@ -13,9 +13,10 @@ import { ParticipantsList } from '@/components/booking/participants-list';
 
 interface CourtCardProps {
   court: Court;
+  onBookingChange?: () => void; // Optional callback when booking changes (for Home screen refresh)
 }
 
-export default function CourtCard({ court }: CourtCardProps) {
+export default function CourtCard({ court, onBookingChange }: CourtCardProps) {
   const colorScheme = useColorScheme();
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -32,9 +33,11 @@ export default function CourtCard({ court }: CourtCardProps) {
     return time;
   };
 
-  // Handle booking changes to refresh participants list
+  // Handle booking changes to refresh participants list and notify parent (for Home screen)
   const handleBookingChange = () => {
     setRefreshKey((prev) => prev + 1);
+    // Notify parent component (Home screen) to refresh bookings list
+    onBookingChange?.();
   };
 
   return (

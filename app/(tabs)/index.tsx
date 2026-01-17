@@ -14,7 +14,7 @@ import { BookingLoadingState } from '@/components/booking/booking-loading-state'
 import { useBookings } from '@/hooks/use-bookings';
 
 export default function HomeScreen() {
-  const { bookings, loading } = useBookings();
+  const { bookings, loading, refetch } = useBookings();
 
   return (
     <ParallaxScrollView
@@ -35,7 +35,7 @@ export default function HomeScreen() {
       ) : bookings.length === 0 ? (
         <BookingEmptyState />
       ) : (
-        <BookingList bookings={bookings} />
+        <BookingList bookings={bookings} onRefresh={refetch} />
       )}
     </ParallaxScrollView>
   );
