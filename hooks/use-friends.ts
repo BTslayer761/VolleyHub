@@ -100,6 +100,22 @@ export function useFriends() {
   };
 
   /**
+   * Cancel a sent friend request
+   */
+  const cancelSentRequest = async (requestId: string) => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      await friendService.cancelSentRequest(requestId, user.id);
+      // Reload requests after canceling
+      await loadFriends();
+    } catch (err) {
+      console.error('Error canceling sent request:', err);
+      throw err;
+    }
+  };
+
+  /**
    * Remove a friend
    */
   const removeFriend = async (friendId: string) => {
@@ -139,6 +155,7 @@ export function useFriends() {
     sendFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
+    cancelSentRequest,
     removeFriend,
     getFriendsAttendingCourt,
   };

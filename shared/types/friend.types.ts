@@ -24,6 +24,8 @@ export interface FriendRequest {
   toUserId: string;
   fromUserName: string;
   fromUserEmail: string;
+  toUserName?: string; // Recipient's name (for sent requests)
+  toUserEmail?: string; // Recipient's email (for sent requests)
   status: FriendRequestStatus;
   createdAt: Date;
   updatedAt?: Date;
@@ -64,6 +66,11 @@ export interface FriendService {
    * Reject a friend request
    */
   rejectFriendRequest(requestId: string, userId: string): Promise<void>;
+
+  /**
+   * Cancel a sent friend request (delete it)
+   */
+  cancelSentRequest(requestId: string, userId: string): Promise<void>;
 
   /**
    * Remove a friend

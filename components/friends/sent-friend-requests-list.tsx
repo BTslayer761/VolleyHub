@@ -11,9 +11,15 @@ import { FriendRequest } from '@/shared/types/friend.types';
 
 interface SentFriendRequestsListProps {
   requests: FriendRequest[];
+  onCancel?: (requestId: string) => Promise<void>;
+  processingRequestId?: string | null;
 }
 
-export function SentFriendRequestsList({ requests }: SentFriendRequestsListProps) {
+export function SentFriendRequestsList({ 
+  requests, 
+  onCancel,
+  processingRequestId,
+}: SentFriendRequestsListProps) {
   if (requests.length === 0) {
     return null; // Empty state handled by parent
   }
@@ -21,7 +27,12 @@ export function SentFriendRequestsList({ requests }: SentFriendRequestsListProps
   return (
     <ThemedView style={styles.container}>
       {requests.map((request) => (
-        <SentFriendRequestCard key={request.id} request={request} />
+        <SentFriendRequestCard 
+          key={request.id} 
+          request={request}
+          onCancel={onCancel}
+          isProcessing={processingRequestId === request.id}
+        />
       ))}
     </ThemedView>
   );

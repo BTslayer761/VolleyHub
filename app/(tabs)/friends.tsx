@@ -37,6 +37,7 @@ export default function FriendsScreen() {
     sendFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
+    cancelSentRequest,
   } = useFriends();
   
   const [isAddFriendModalVisible, setIsAddFriendModalVisible] = useState(false);
@@ -75,6 +76,23 @@ export default function FriendsScreen() {
       Alert.alert(
         'Error',
         error.message || 'Failed to reject friend request. Please try again.'
+      );
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleCancelSentRequest = async (requestId: string) => {
+    try {
+      setProcessingRequestId(requestId);
+      await cancelSentRequest(requestId);
+      // Requests list will refresh automatically via refetch
+      await refetch(); // Explicitly refresh to show updated data
+    } catch (error: any) {
+      console.error('Error canceling sent request:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to cancel friend request. Please try again.'
       );
     } finally {
       setProcessingRequestId(null);
@@ -140,7 +158,11 @@ export default function FriendsScreen() {
             <ThemedText type="subtitle" style={styles.sectionTitle}>
               Sent Requests ({sentRequests.length})
             </ThemedText>
-            <SentFriendRequestsList requests={sentRequests} />
+            <SentFriendRequestsList 
+              requests={sentRequests}
+              onCancel={handleCancelSentRequest}
+              processingRequestId={processingRequestId}
+            />
           </ThemedView>
         )}
 
@@ -192,7 +214,9 @@ export default function FriendsScreen() {
           refetch(); // Refresh friends list when modal closes
         }}
         friends={friends}
+        sentRequests={sentRequests}
         onSendFriendRequest={sendFriendRequest}
+        onCancelSentRequest={handleCancelSentRequest}
       />
     </ParallaxScrollView>
   );

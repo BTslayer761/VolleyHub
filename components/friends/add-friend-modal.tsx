@@ -26,17 +26,27 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { User } from '@/shared/types/auth.types';
 import { useAuth } from '@/contexts/AuthContext';
-import { Friend } from '@/shared/types/friend.types';
+import { Friend, FriendRequest } from '@/shared/types/friend.types';
 
 interface AddFriendModalProps {
   visible: boolean;
   onClose: () => void;
   onAddFriend?: (emailOrUsername: string) => Promise<void>; // Optional, modal handles it directly
   friends?: Friend[]; // Current friends list to filter out
+  sentRequests?: FriendRequest[]; // Sent friend requests to show pending state
   onSendFriendRequest?: (emailOrUsername: string) => Promise<void>; // Function to send friend request
+  onCancelSentRequest?: (requestId: string) => Promise<void>; // Function to cancel sent request
 }
 
-export function AddFriendModal({ visible, onClose, onAddFriend, friends = [], onSendFriendRequest }: AddFriendModalProps) {
+export function AddFriendModal({ 
+  visible, 
+  onClose, 
+  onAddFriend, 
+  friends = [], 
+  sentRequests = [],
+  onSendFriendRequest,
+  onCancelSentRequest,
+}: AddFriendModalProps) {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
   const backgroundColor = useThemeColor({}, 'background');
@@ -153,6 +163,31 @@ export function AddFriendModal({ visible, onClose, onAddFriend, friends = [], on
       return;
     }
 
+    // Check if there's a pending sent request
+    const pendingRequest = sentRequests.find(
+      (req) => req.toUserId === targetUser.id && req.status === 'pending'
+    );
+
+    // If pending request exists, cancel it
+    if (pendingRequest && onCancelSentRequest) {
+      setSendingRequestUserId(targetUser.id);
+      try {
+        await onCancelSentRequest(pendingRequest.id);
+        // Reload users to update the list
+        await loadUsers();
+      } catch (error: any) {
+        console.error('Error canceling friend request:', error);
+        Alert.alert(
+          'Error',
+          error.message || 'Failed to cancel friend request. Please try again.'
+        );
+      } finally {
+        setSendingRequestUserId(null);
+      }
+      return;
+    }
+
+    // Send new friend request
     setSendingRequestUserId(targetUser.id);
     try {
       // Use the provided function or fallback to onAddFriend
@@ -163,7 +198,7 @@ export function AddFriendModal({ visible, onClose, onAddFriend, friends = [], on
       } else {
         throw new Error('No friend request handler provided');
       }
-      Alert.alert('Success', `Friend request sent to ${targetUser.name}!`);
+      // No success alert - just update the UI
       // Reload users to update the list
       await loadUsers();
     } catch (error: any) {
@@ -259,6 +294,10 @@ export function AddFriendModal({ visible, onClose, onAddFriend, friends = [], on
                 ) : (
                   filteredUsers.map((user) => {
                     const isSending = sendingRequestUserId === user.id;
+                    const pendingRequest = sentRequests.find(
+                      (req) => req.toUserId === user.id && req.status === 'pending'
+                    );
+                    const isPending = !!pendingRequest;
 
                     return (
                       <View
@@ -282,16 +321,26 @@ export function AddFriendModal({ visible, onClose, onAddFriend, friends = [], on
                           <TouchableOpacity
                             style={[
                               styles.addFriendButton,
-                              {
-                                backgroundColor: colorScheme === 'dark' ? '#0a7ea4' : themeColors.tint,
-                                opacity: isSending ? 0.6 : 1,
-                              },
+                              isPending
+                                ? {
+                                    backgroundColor: colorScheme === 'dark' ? '#F59E0B' : '#F59E0B',
+                                    opacity: isSending ? 0.6 : 1,
+                                  }
+                                : {
+                                    backgroundColor: colorScheme === 'dark' ? '#0a7ea4' : themeColors.tint,
+                                    opacity: isSending ? 0.6 : 1,
+                                  },
                             ]}
                             onPress={() => handleAddFriend(user)}
                             disabled={isSending}
                             activeOpacity={0.8}>
                             {isSending ? (
                               <ActivityIndicator size="small" color="#fff" />
+                            ) : isPending ? (
+                              <>
+                                <IconSymbol name="clock.fill" size={16} color="#fff" />
+                                <ThemedText style={styles.addFriendButtonText}>Pending</ThemedText>
+                              </>
                             ) : (
                               <>
                                 <IconSymbol name="person.badge.plus" size={16} color="#fff" />

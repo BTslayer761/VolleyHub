@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -14,12 +14,41 @@ import { FriendRequest } from '@/shared/types/friend.types';
 
 interface SentFriendRequestCardProps {
   request: FriendRequest;
+  onCancel?: (requestId: string) => Promise<void>;
+  isProcessing?: boolean;
 }
 
-export function SentFriendRequestCard({ request }: SentFriendRequestCardProps) {
+export function SentFriendRequestCard({ 
+  request, 
+  onCancel,
+  isProcessing = false,
+}: SentFriendRequestCardProps) {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
   const borderColor = colorScheme === 'dark' ? '#444' : '#ddd';
+
+  const handleCancel = async () => {
+    if (!onCancel) return;
+    
+    Alert.alert(
+      'Cancel Request',
+      `Are you sure you want to cancel the friend request to ${request.toUserName || 'this user'}?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await onCancel(request.id);
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to cancel request. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
@@ -63,29 +92,39 @@ export function SentFriendRequestCard({ request }: SentFriendRequestCardProps) {
         {/* Request Info */}
         <View style={styles.info}>
           <ThemedText type="defaultSemiBold" style={styles.name}>
-            Waiting for response
+            {request.toUserName || 'User'}
           </ThemedText>
           <ThemedText style={styles.email} numberOfLines={1}>
-            Request sent to user
+            {request.toUserEmail || request.toUserId}
           </ThemedText>
           <ThemedText style={styles.timeAgo}>
             Sent {formatTimeAgo(request.createdAt)}
           </ThemedText>
         </View>
 
-        {/* Status Badge */}
-        <ThemedView
-          style={[
-            styles.statusBadge,
-            {
-              backgroundColor: '#F59E0B20', // Orange background
-            },
-          ]}>
-          <IconSymbol name="clock.fill" size={16} color="#F59E0B" />
-          <ThemedText style={[styles.statusText, { color: '#F59E0B' }]}>
-            Pending
-          </ThemedText>
-        </ThemedView>
+        {/* Cancel Button */}
+        {onCancel && (
+          <TouchableOpacity
+            style={[
+              styles.cancelButton,
+              {
+                backgroundColor: colorScheme === 'dark' ? '#dc2626' : '#ef4444',
+                opacity: isProcessing ? 0.6 : 1,
+              },
+            ]}
+            onPress={handleCancel}
+            disabled={isProcessing}
+            activeOpacity={0.8}>
+            {isProcessing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <IconSymbol name="xmark" size={16} color="#fff" />
+                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </ThemedView>
   );
@@ -136,6 +175,21 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

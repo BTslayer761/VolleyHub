@@ -63,6 +63,8 @@ function firestoreDocToFriendRequest(docData: any, id: string): FriendRequest {
     toUserId: docData.toUserId,
     fromUserName: docData.fromUserName || 'User',
     fromUserEmail: docData.fromUserEmail || '',
+    toUserName: docData.toUserName,
+    toUserEmail: docData.toUserEmail,
     status: (docData.status as FriendRequestStatus) || 'pending',
     createdAt,
     updatedAt,
@@ -78,6 +80,14 @@ function friendRequestToFirestoreDoc(request: Partial<FriendRequest>): any {
     fromUserEmail: request.fromUserEmail,
     status: request.status || 'pending',
   };
+
+  // Include recipient info if available
+  if (request.toUserName) {
+    doc.toUserName = request.toUserName;
+  }
+  if (request.toUserEmail) {
+    doc.toUserEmail = request.toUserEmail;
+  }
 
   if (request.createdAt) {
     doc.createdAt = Timestamp.fromDate(request.createdAt);
@@ -233,10 +243,15 @@ export const friendService: FriendService = {
         throw new Error('This user has already sent you a friend request');
       }
 
-      // Get sender info
+      // Get sender and recipient info
       const fromUserInfo = await getUserInfo(fromUserId);
       if (!fromUserInfo) {
         throw new Error('Sender user not found');
+      }
+
+      const toUserInfo = await getUserInfo(toUserId);
+      if (!toUserInfo) {
+        throw new Error('Recipient user not found');
       }
 
       // Create friend request
@@ -245,6 +260,8 @@ export const friendService: FriendService = {
         toUserId,
         fromUserName: fromUserInfo.name,
         fromUserEmail: fromUserInfo.email,
+        toUserName: toUserInfo.name,
+        toUserEmail: toUserInfo.email,
         status: 'pending',
         createdAt: new Date(),
       };
@@ -334,12 +351,37 @@ export const friendService: FriendService = {
       }
 
       const requests: FriendRequest[] = [];
-      querySnapshot.forEach((docSnapshot) => {
-        requests.push(firestoreDocToFriendRequest(docSnapshot.data(), docSnapshot.id));
-      });
+      
+      // Process requests and fetch recipient info if missing
+      for (const docSnapshot of querySnapshot.docs) {
+        const requestData = docSnapshot.data();
+        let request = firestoreDocToFriendRequest(requestData, docSnapshot.id);
+        
+        // If recipient info is missing, fetch it
+        if (!request.toUserName || !request.toUserEmail) {
+          const recipientInfo = await getUserInfo(request.toUserId);
+          if (recipientInfo) {
+            request.toUserName = recipientInfo.name;
+            request.toUserEmail = recipientInfo.email;
+            
+            // Update the document in Firestore with recipient info for future queries
+            try {
+              await updateDoc(docSnapshot.ref, {
+                toUserName: recipientInfo.name,
+                toUserEmail: recipientInfo.email,
+              });
+            } catch (updateError) {
+              // If update fails, continue anyway - we have the info in memory
+              console.warn('Failed to update request with recipient info:', updateError);
+            }
+          }
+        }
+        
+        requests.push(request);
+      }
 
       // Sort by createdAt if orderBy failed
-      if (requests.length > 0 && !requests[0].createdAt) {
+      if (requests.length > 0) {
         requests.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       }
 
@@ -430,6 +472,35 @@ export const friendService: FriendService = {
       });
     } catch (error: any) {
       console.error('Error rejecting friend request:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Cancel a sent friend request (delete it)
+   */
+  async cancelSentRequest(requestId: string, userId: string): Promise<void> {
+    try {
+      const requestsRef = collection(db, 'friendRequests');
+      const requestDocRef = doc(requestsRef, requestId);
+      const requestDoc = await getDoc(requestDocRef);
+
+      if (!requestDoc.exists()) {
+        throw new Error('Friend request not found');
+      }
+
+      const requestData = requestDoc.data();
+      if (requestData.fromUserId !== userId) {
+        throw new Error('You are not the sender of this request');
+      }
+
+      if (requestData.status !== 'pending') {
+        throw new Error('Cannot cancel a request that has already been processed');
+      }
+
+      await deleteDoc(requestDocRef);
+    } catch (error: any) {
+      console.error('Error canceling sent request:', error);
       throw error;
     }
   },
