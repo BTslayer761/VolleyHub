@@ -103,13 +103,17 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
         ]
       );
     } else {
-      // Request a new slot without confirmation
+      // Request a new slot
+      // For FCFS: immediately joins (like outdoor)
+      // For Priority: creates pending request
       try {
         setIsLoading(true);
-        const booking = await mockBookingService.requestIndoorSlot(court.id, user.id);
+        const bookingMode = court.bookingMode || 'priority'; // Default to priority if not specified
+        const booking = await mockBookingService.requestIndoorSlot(court.id, user.id, bookingMode);
         setBookingStatus(booking.status || 'pending');
         setBookingId(booking.id);
         setSlotIndex(booking.slotIndex);
+        
         // Notify parent component of change
         onBookingChange?.();
       } catch (error) {
@@ -130,8 +134,19 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
     );
   }
 
-  // Determine button text and style based on status
+  // Determine button text and style based on status and booking mode
   const getButtonConfig = () => {
+    const bookingMode = court.bookingMode || 'priority'; // Default to priority if not specified
+    
+    // For FCFS mode, use outdoor-style button text when not booked
+    if (!bookingStatus && bookingMode === 'fcfs') {
+      return {
+        text: 'Join Session',
+        style: styles.buttonRequest,
+        textStyle: styles.buttonTextRequest,
+      };
+    }
+    
     if (!bookingStatus) {
       return {
         text: 'Request Slot',
@@ -143,7 +158,7 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
     switch (bookingStatus) {
       case 'confirmed':
         return {
-          text: slotIndex !== undefined ? `✓ Slot ${slotIndex}` : '✓ Confirmed',
+          text: slotIndex !== undefined ? `✓ Slot ${slotIndex + 1}` : '✓ Confirmed',
           style: styles.buttonConfirmed,
           textStyle: styles.buttonTextConfirmed,
         };
@@ -161,7 +176,7 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
         };
       default:
         return {
-          text: 'Request Slot',
+          text: bookingMode === 'fcfs' ? 'Join Session' : 'Request Slot',
           style: styles.buttonRequest,
           textStyle: styles.buttonTextRequest,
         };
@@ -170,6 +185,15 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
 
   const buttonConfig = getButtonConfig();
 
+  const bookingMode = court.bookingMode || 'priority';
+  const buttonText = isLoading
+    ? 'Processing...'
+    : bookingStatus
+    ? bookingMode === 'fcfs'
+      ? buttonConfig.text // For FCFS, just show status (already includes cancel action)
+      : `${buttonConfig.text} (Cancel)` // For Priority, show cancel option
+    : buttonConfig.text;
+
   return (
     <TouchableOpacity
       style={[styles.button, buttonConfig.style]}
@@ -177,7 +201,7 @@ export function IndoorBookingButton({ court, onBookingChange }: IndoorBookingBut
       disabled={isLoading}
       activeOpacity={0.7}>
       <ThemedText style={[styles.buttonText, buttonConfig.textStyle]}>
-        {isLoading ? 'Processing...' : bookingStatus ? `${buttonConfig.text} (Cancel)` : buttonConfig.text}
+        {buttonText}
       </ThemedText>
     </TouchableOpacity>
   );

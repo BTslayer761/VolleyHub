@@ -1,9 +1,10 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { courtService } from '@/lib/services/court-service';
 import { Court, OutdoorCourtStatus } from '@/shared/types/court.types';
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
@@ -57,6 +58,33 @@ export default function CourtCard({ court, onBookingChange }: CourtCardProps) {
   const handleStatusUpdated = () => {
     setRefreshKey((prev) => prev + 1);
     onBookingChange?.(); // Notify parent to refresh court list
+  };
+
+  const handleDeleteCourt = () => {
+    Alert.alert(
+      'Delete Court',
+      `Are you sure you want to delete "${court.name}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await courtService.deleteCourt(court.id);
+              Alert.alert('Success', 'Court deleted successfully');
+              onBookingChange?.(); // Notify parent to refresh
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete court. Please try again.');
+              console.error('Error deleting court:', error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getStatusColor = (status?: OutdoorCourtStatus): string => {
@@ -183,19 +211,35 @@ export default function CourtCard({ court, onBookingChange }: CourtCardProps) {
         )}
       </View>
 
-      {/* Admin: Update Status Button (Outdoor courts only) */}
-      {court.type === 'outdoor' && isAdmin && (
-        <TouchableOpacity
-          style={[
-            styles.updateStatusButton,
-            {
-              backgroundColor:
-                colorScheme === 'dark' ? '#0a7ea4' : Colors[colorScheme ?? 'light'].tint,
-            },
-          ]}
-          onPress={() => setIsStatusModalVisible(true)}>
-          <ThemedText style={styles.updateStatusButtonText}>Update Status</ThemedText>
-        </TouchableOpacity>
+      {/* Admin: Action Buttons */}
+      {isAdmin && (
+        <View style={styles.adminActions}>
+          {court.type === 'outdoor' && (
+            <TouchableOpacity
+              style={[
+                styles.adminButton,
+                styles.updateStatusButton,
+                {
+                  backgroundColor:
+                    colorScheme === 'dark' ? '#0a7ea4' : Colors[colorScheme ?? 'light'].tint,
+                },
+              ]}
+              onPress={() => setIsStatusModalVisible(true)}>
+              <ThemedText style={styles.adminButtonText}>Update Status</ThemedText>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[
+              styles.adminButton,
+              styles.deleteButton,
+              {
+                backgroundColor: colorScheme === 'dark' ? '#dc2626' : '#ef4444',
+              },
+            ]}
+            onPress={handleDeleteCourt}>
+            <ThemedText style={styles.adminButtonText}>Delete Court</ThemedText>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Booking Button */}
@@ -290,14 +334,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  updateStatusButton: {
+  adminActions: {
+    flexDirection: 'row',
+    gap: 12,
     marginTop: 12,
+  },
+  adminButton: {
+    flex: 1,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
   },
-  updateStatusButtonText: {
+  updateStatusButton: {
+    // Styles applied via inline style
+  },
+  deleteButton: {
+    // Styles applied via inline style
+  },
+  adminButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',

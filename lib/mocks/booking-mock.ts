@@ -94,8 +94,36 @@ export const mockBookingService: BookingService = {
 
   /**
    * Request indoor court slot
+   * For FCFS mode: immediately confirms and assigns slot
+   * For Priority mode: creates pending booking (no slot assigned yet)
    */
-  requestIndoorSlot: async (courtId: string, userId: string) => {
+  requestIndoorSlot: async (courtId: string, userId: string, bookingMode?: 'fcfs' | 'priority') => {
+    // For FCFS mode: assign slot immediately (like outdoor court behavior)
+    if (bookingMode === 'fcfs') {
+      // Get all confirmed bookings for this court to find next available slot
+      const courtBookings = mockBookings.filter(
+        (b) => b.courtId === courtId && b.slotIndex !== undefined && b.status === 'confirmed'
+      );
+      
+      // Find the highest slot index
+      const maxSlotIndex = courtBookings.reduce((max, b) => {
+        return b.slotIndex !== undefined && b.slotIndex > max ? b.slotIndex : max;
+      }, -1);
+      
+      const newBooking: Booking = {
+        id: `booking-${Date.now()}`,
+        userId,
+        courtId,
+        status: 'confirmed',
+        slotIndex: maxSlotIndex + 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockBookings.push(newBooking);
+      return newBooking;
+    }
+    
+    // For Priority mode (or undefined): create pending booking
     const newBooking: Booking = {
       id: `booking-${Date.now()}`,
       userId,
