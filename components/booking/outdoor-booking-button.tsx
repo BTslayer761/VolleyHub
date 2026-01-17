@@ -114,9 +114,9 @@ const styles = StyleSheet.create({
     borderColor: '#059669',
   },
   buttonGoing: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)', // Light red background
+    backgroundColor: 'rgba(16, 185, 129, 0.1)', // Light green background
     borderWidth: 1,
-    borderColor: '#EF4444', // Red border
+    borderColor: '#10B981', // Green border
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -131,6 +131,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', // White text for green button
   },
   buttonTextGoing: {
-    color: '#EF4444', // Red text
+    color: '#10B981', // Green text
   },
 });
