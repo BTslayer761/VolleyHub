@@ -12,13 +12,18 @@ import { BookingCard } from './booking-card';
 
 interface BookingListProps {
   bookings: BookingWithCourt[];
+  onCancel: (bookingId: string, courtId: string, isOutdoor: boolean) => Promise<void>;
 }
 
-export function BookingList({ bookings }: BookingListProps) {
+export function BookingList({ bookings, onCancel }: BookingListProps) {
   return (
     <ThemedView style={styles.container}>
       {bookings.map(({ booking, court }) => (
-        <BookingCard key={booking.id} bookingWithCourt={{ booking, court }} />
+        <BookingCard
+          key={booking.id}
+          bookingWithCourt={{ booking, court }}
+          onCancel={onCancel}
+        />
       ))}
     </ThemedView>
   );

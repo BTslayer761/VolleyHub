@@ -7,8 +7,8 @@ import { useEffect, useState } from 'react';
 
 // Mock services (temporary - will be replaced with real services during integration)
 import { mockAuthService } from '@/app/mocks/auth-mock';
-import { mockCourtService } from '@/app/mocks/court-mock';
 import { mockBookingService } from '@/app/mocks/booking-mock';
+import { mockCourtService } from '@/app/mocks/court-mock';
 
 import { BookingWithCourt } from '@/app/utils/booking-utils';
 
@@ -60,10 +60,43 @@ export function useBookings() {
     loadBookings();
   }, []);
 
+  /**
+   * Cancel an outdoor court booking (RSVP)
+   */
+  const cancelOutdoorBooking = async (courtId: string) => {
+    try {
+      const user = mockAuthService.getCurrentUser();
+      if (!user) return;
+
+      await mockBookingService.cancelOutdoorBooking(courtId, user.id);
+      // Reload bookings after cancellation
+      await loadBookings();
+    } catch (err) {
+      console.error('Error canceling outdoor booking:', err);
+      throw err;
+    }
+  };
+
+  /**
+   * Cancel an indoor court booking
+   */
+  const cancelIndoorBooking = async (bookingId: string) => {
+    try {
+      await mockBookingService.cancelIndoorBooking(bookingId);
+      // Reload bookings after cancellation
+      await loadBookings();
+    } catch (err) {
+      console.error('Error canceling indoor booking:', err);
+      throw err;
+    }
+  };
+
   return {
     bookings,
     loading,
     error,
     refetch: loadBookings,
+    cancelOutdoorBooking,
+    cancelIndoorBooking,
   };
 }

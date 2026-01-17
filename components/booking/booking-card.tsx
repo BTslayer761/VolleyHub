@@ -3,25 +3,56 @@
  * Displays a single booking with court details and status
  */
 
-import { StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { Alert, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-import { BookingWithCourt } from '@/app/utils/booking-utils';
-import { formatBookingDate, getBookingStatusColor, getBookingStatusText } from '@/app/utils/booking-utils';
+import { BookingWithCourt, formatBookingDate, getBookingStatusColor, getBookingStatusText } from '@/app/utils/booking-utils';
 
 interface BookingCardProps {
   bookingWithCourt: BookingWithCourt;
+  onCancel: (bookingId: string, courtId: string, isOutdoor: boolean) => Promise<void>;
 }
 
-export function BookingCard({ bookingWithCourt }: BookingCardProps) {
+export function BookingCard({ bookingWithCourt, onCancel }: BookingCardProps) {
   const { booking, court } = bookingWithCourt;
+  const [isCanceling, setIsCanceling] = useState(false);
 
   if (!court) return null;
 
   const statusText = getBookingStatusText(booking, court);
   const statusColor = getBookingStatusColor(booking.status, booking.isGoing);
+  const isOutdoor = court.type === 'outdoor';
+
+  const handleCancel = () => {
+    Alert.alert(
+      'Cancel Booking',
+      `Are you sure you want to cancel your booking for ${court.name}?`,
+      [
+        {
+          text: 'No',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsCanceling(true);
+              await onCancel(booking.id, court.id, isOutdoor);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+              console.error('Cancel booking error:', error);
+            } finally {
+              setIsCanceling(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <ThemedView style={styles.card}>
@@ -47,6 +78,16 @@ export function BookingCard({ bookingWithCourt }: BookingCardProps) {
           {court.type === 'outdoor' ? '🏖️ Outdoor' : '🏠 Indoor'}
         </ThemedText>
       </ThemedView>
+
+      <TouchableOpacity
+        style={styles.cancelButton}
+        onPress={handleCancel}
+        disabled={isCanceling}
+        activeOpacity={0.7}>
+        <ThemedText style={styles.cancelButtonText}>
+          {isCanceling ? 'Canceling...' : 'Cancel Booking'}
+        </ThemedText>
+      </TouchableOpacity>
     </ThemedView>
   );
 }
@@ -91,5 +132,20 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 14,
     opacity: 0.8,
+  },
+  cancelButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
