@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, enableNetwork, disableNetwork } from 'firebase/firestore';
+import { onAuthStateChanged, User as FirebaseUser, signOut, updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp, enableNetwork } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
 import { User, UserRole } from '@/shared/types/auth.types';
 
@@ -11,6 +11,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   hasRole: (role: UserRole) => boolean;
   logout: () => Promise<void>;
+  updateUserName: (name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,16 +60,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw firestoreError;
           }
           
-          let role: UserRole = 'user';
-          let name = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
+          // Determine user role based on email
+          const email = firebaseUser.email || '';
+          let role: UserRole = email === 'admin@gmail.com' ? 'administrator' : 'user';
+          let name = firebaseUser.displayName || email.split('@')[0] || 'User';
           let createdAt = firebaseUser.metadata.creationTime 
             ? new Date(firebaseUser.metadata.creationTime) 
             : new Date();
           
           if (userDoc.exists()) {
-            // User document exists, get role from Firestore
+            // User document exists, get data from Firestore
             const userData = userDoc.data();
-            role = userData.role || (firebaseUser.email === 'admin@gmail.com' ? 'administrator' : 'user');
+            role = userData.role || role;
             name = userData.name || name;
             
             // Safely convert createdAt from Firestore Timestamp to Date
@@ -88,32 +91,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
               // If none of the above, createdAt remains as the fallback value
             }
-          } else {
-            // User document doesn't exist, create it
-            // Determine role based on email (admin@gmail.com is administrator)
-            role = firebaseUser.email === 'admin@gmail.com' ? 'administrator' : 'user';
-            
-            try {
-              await setDoc(userDocRef, {
-                email: firebaseUser.email,
-                name: name,
-                role: role,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-              });
-            } catch (setDocError: any) {
-              // If offline, continue with fallback data
-              if (setDocError?.code === 'unavailable' || setDocError?.message?.includes('offline')) {
-                console.warn('Cannot create user document while offline');
-              } else {
-                throw setDocError;
-              }
-            }
           }
+          // Don't create user document automatically - let the name prompt handle it
+          // This way we can detect if user is new and prompt them
           
           setUser({
             id: firebaseUser.uid,
-            email: firebaseUser.email || '',
+            email: email,
             name: name,
             role: role,
             createdAt: createdAt,
@@ -146,6 +130,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user?.role === role;
   };
 
+  const updateUserName = async (name: string) => {
+    if (!firebaseUser) {
+      throw new Error('User not authenticated');
+    }
+    if (!name.trim()) {
+      throw new Error('Name cannot be empty');
+    }
+    
+    try {
+      const trimmedName = name.trim();
+      
+      // Update user document in Firestore
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      await setDoc(
+        userDocRef,
+        {
+          name: trimmedName,
+          email: firebaseUser.email,
+          role: user?.role || (firebaseUser.email === 'admin@gmail.com' ? 'administrator' : 'user'),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true } // Merge with existing document, don't overwrite
+      );
+      
+      // Also update Firebase Auth profile displayName
+      try {
+        await updateProfile(firebaseUser, { displayName: trimmedName });
+      } catch (error) {
+        console.error('Error updating Firebase profile:', error);
+        // Don't throw - Firestore save is more important
+      }
+      
+      // Update local user state
+      if (user) {
+        setUser({
+          ...user,
+          name: trimmedName,
+        });
+      }
+    } catch (error) {
+      console.error('Error saving user name to Firestore:', error);
+      throw error; // Re-throw so caller can handle it
+    }
+  };
+
   const logout = async () => {
     await signOut(auth);
     setUser(null);
@@ -161,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         hasRole,
         logout,
+        updateUserName,
       }}>
       {children}
     </AuthContext.Provider>

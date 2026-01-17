@@ -1,5 +1,6 @@
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
+
 import { Auth, initializeAuth } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 
@@ -7,6 +8,7 @@ import { Firestore, getFirestore } from 'firebase/firestore';
 // Using dynamic access to avoid TypeScript errors
 const firebaseAuth = require('firebase/auth');
 const getReactNativePersistence = firebaseAuth.getReactNativePersistence;
+
 
 // Your Firebase configuration
 // Replace these values with your Firebase project config
@@ -26,12 +28,13 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Authentication with AsyncStorage persistence
 // This ensures auth state persists between app sessions
 export const auth: Auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
 });
 
 // Initialize Firestore
 // Note: Firestore automatically enables offline persistence in React Native
 // Data is cached locally and synced when the app comes back online
+
 export const db: Firestore = getFirestore(app);
 
 export default app;
