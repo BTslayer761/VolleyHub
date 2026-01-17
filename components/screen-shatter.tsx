@@ -1,18 +1,16 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, Dimensions, View } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  withDelay,
-  Easing,
-  runOnJS,
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withTiming
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const GRID_COLS = 8;
-const GRID_ROWS = 12;
+const GRID_COLS = 6; // Reduced for better performance
+const GRID_ROWS = 10; // Reduced for better performance
 const TILE_WIDTH = SCREEN_WIDTH / GRID_COLS;
 const TILE_HEIGHT = SCREEN_HEIGHT / GRID_ROWS;
 
@@ -27,14 +25,14 @@ export function ScreenShatter({ onComplete }: Props) {
   useEffect(() => {
     // Fade out container smoothly
     containerOpacity.value = withTiming(0, {
-      duration: 400,
+      duration: 250,
       easing: Easing.out(Easing.ease),
     });
 
     // Navigate after a short delay for smooth transition
     const timer = setTimeout(() => {
       onComplete();
-    }, 300);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [onComplete]);
@@ -62,7 +60,7 @@ function ShatterTile({ index }: { index: number }) {
   const translateY = useSharedValue(0);
   const rotate = useSharedValue(0);
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
+  const opacity = useSharedValue(0.95); // Slightly transparent to show login screen behind
 
   useEffect(() => {
     // Calculate center of screen
@@ -87,47 +85,35 @@ function ShatterTile({ index }: { index: number }) {
     const dirX = deltaX / distance;
     const dirY = deltaY / distance;
 
-    // Smoother explosion with less randomness
-    const explosionDistance = distance * 1.2;
+    // Optimized explosion distance
+    const explosionDistance = distance * 1.5;
     
-    // Stagger animation based on distance from center
-    const delay = (distance / maxDistance) * 100;
+    // Reduced stagger for smoother, faster animation
+    const delay = (distance / maxDistance) * 50;
 
-    // Duration based on distance for smoother effect
-    const duration = 350 + (distance / maxDistance) * 150;
+    // Shorter duration for smoother, faster effect
+    const duration = 250 + (distance / maxDistance) * 100;
 
-    // Animate tile flying away with sequence for smoother effect
+    // Simplified animation for better performance - single timing instead of sequence
     translateX.value = withDelay(
       delay,
-      withSequence(
-        withTiming(dirX * explosionDistance * 0.3, {
-          duration: duration * 0.3,
-          easing: Easing.out(Easing.quad),
-        }),
-        withTiming(dirX * explosionDistance, {
-          duration: duration * 0.7,
-          easing: Easing.out(Easing.cubic),
-        })
-      )
+      withTiming(dirX * explosionDistance, {
+        duration,
+        easing: Easing.out(Easing.cubic),
+      })
     );
 
     translateY.value = withDelay(
       delay,
-      withSequence(
-        withTiming(dirY * explosionDistance * 0.3, {
-          duration: duration * 0.3,
-          easing: Easing.out(Easing.quad),
-        }),
-        withTiming(dirY * explosionDistance, {
-          duration: duration * 0.7,
-          easing: Easing.out(Easing.cubic),
-        })
-      )
+      withTiming(dirY * explosionDistance, {
+        duration,
+        easing: Easing.out(Easing.cubic),
+      })
     );
 
     rotate.value = withDelay(
       delay,
-      withTiming((Math.random() - 0.5) * 360, {
+      withTiming((Math.random() - 0.5) * 720, {
         duration,
         easing: Easing.out(Easing.cubic),
       })
@@ -135,24 +121,18 @@ function ShatterTile({ index }: { index: number }) {
 
     scale.value = withDelay(
       delay,
-      withTiming(0.8, {
-        duration: duration * 0.5,
-        easing: Easing.out(Easing.quad),
+      withTiming(0.3, {
+        duration,
+        easing: Easing.out(Easing.cubic),
       })
     );
 
     opacity.value = withDelay(
       delay,
-      withSequence(
-        withTiming(0.7, {
-          duration: duration * 0.3,
-          easing: Easing.out(Easing.quad),
-        }),
-        withTiming(0, {
-          duration: duration * 0.7,
-          easing: Easing.out(Easing.cubic),
-        })
-      )
+      withTiming(0, {
+        duration,
+        easing: Easing.out(Easing.cubic),
+      })
     );
   }, []);
 
@@ -177,7 +157,10 @@ function ShatterTile({ index }: { index: number }) {
           top: row * TILE_HEIGHT,
           width: TILE_WIDTH,
           height: TILE_HEIGHT,
-          backgroundColor: '#FFFFFF',
+          // Semi-transparent so login screen shows through as it shatters
+          // Using a very light overlay that still shows the login screen
+          backgroundColor: 'rgba(255, 255, 255, 0.3)',
+          borderColor: 'rgba(0, 0, 0, 0.15)',
         },
         animatedStyle,
       ]}
@@ -197,6 +180,5 @@ const styles = StyleSheet.create({
   tile: {
     position: 'absolute',
     borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
 });

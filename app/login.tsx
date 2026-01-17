@@ -79,7 +79,24 @@ export default function LoginScreen() {
       setShowVolleyball(true);
     } catch (err: any) {
       setLoading(false);
-      setError('Failed to sign in as user. Please ensure the account exists in Firebase.');
+      // Handle different Firebase error codes with better error messages
+      let errorMessage = 'Failed to sign in as user';
+      
+      if (err.code === 'auth/user-not-found') {
+        errorMessage = 'User account jarell@gmail.com not found. Please create the account first.';
+      } else if (err.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password for jarell@gmail.com';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address';
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your connection';
+      } else {
+        errorMessage = `Sign in failed: ${err.message || 'Unknown error'}`;
+      }
+      
+      setError(errorMessage);
       console.error('Dev sign in error:', err);
     }
   };
@@ -98,7 +115,24 @@ export default function LoginScreen() {
       setShowVolleyball(true);
     } catch (err: any) {
       setLoading(false);
-      setError('Failed to sign in as admin. Please ensure the account exists in Firebase.');
+      // Handle different Firebase error codes with better error messages
+      let errorMessage = 'Failed to sign in as admin';
+      
+      if (err.code === 'auth/user-not-found') {
+        errorMessage = 'Admin account admin@gmail.com not found. Please create the account first.';
+      } else if (err.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password for admin@gmail.com';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address';
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your connection';
+      } else {
+        errorMessage = `Sign in failed: ${err.message || 'Unknown error'}`;
+      }
+      
+      setError(errorMessage);
       console.error('Dev sign in error:', err);
     }
   };
@@ -199,7 +233,8 @@ export default function LoginScreen() {
               style={[
                 styles.button,
                 { 
-                  backgroundColor: themeColors.tint,
+                  borderColor,
+                  backgroundColor: inputBackgroundColor,
                   opacity: loading ? 0.6 : 1,
                 }
               ]}
@@ -207,9 +242,9 @@ export default function LoginScreen() {
               activeOpacity={0.8}
               disabled={loading}>
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={textColor} />
               ) : (
-                <ThemedText style={styles.buttonText}>Login</ThemedText>
+                <ThemedText style={[styles.buttonText, { color: textColor }]}>Login</ThemedText>
               )}
             </TouchableOpacity>
 
@@ -230,11 +265,15 @@ export default function LoginScreen() {
                     {
                       backgroundColor: colorScheme === 'dark' ? '#1e3a8a' : '#3b82f6',
                       borderColor: colorScheme === 'dark' ? '#3b82f6' : '#2563eb',
+                      opacity: loading ? 0.6 : 1,
                     }
                   ]}
                   onPress={handleDevSignInAsUser}
-                  activeOpacity={0.8}>
-                  <ThemedText style={styles.devButtonText}>Sign in as User</ThemedText>
+                  activeOpacity={0.8}
+                  disabled={loading}>
+                  <ThemedText style={styles.devButtonText}>
+                    {loading ? 'Signing in...' : 'Sign in as User'}
+                  </ThemedText>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -243,11 +282,15 @@ export default function LoginScreen() {
                     {
                       backgroundColor: colorScheme === 'dark' ? '#7c2d12' : '#dc2626',
                       borderColor: colorScheme === 'dark' ? '#dc2626' : '#b91c1c',
+                      opacity: loading ? 0.6 : 1,
                     }
                   ]}
                   onPress={handleDevSignInAsAdmin}
-                  activeOpacity={0.8}>
-                  <ThemedText style={styles.devButtonText}>Sign in as Admin</ThemedText>
+                  activeOpacity={0.8}
+                  disabled={loading}>
+                  <ThemedText style={styles.devButtonText}>
+                    {loading ? 'Signing in...' : 'Sign in as Admin'}
+                  </ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
@@ -351,14 +394,15 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 50,
+    borderWidth: 1,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+    paddingHorizontal: 16,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
   signupLink: {
