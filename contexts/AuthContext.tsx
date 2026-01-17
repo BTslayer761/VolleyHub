@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser, signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, enableNetwork } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, enableNetwork } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
 import { User, UserRole } from '@/shared/types/auth.types';
 
@@ -12,6 +12,7 @@ interface AuthContextType {
   hasRole: (role: UserRole) => boolean;
   logout: () => Promise<void>;
   updateUserName: (name: string) => Promise<void>;
+  updateUserRole: (userId: string, role: UserRole) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -175,6 +176,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUserRole = async (userId: string, role: UserRole) => {
+    if (!firebaseUser) {
+      throw new Error('User not authenticated');
+    }
+    
+    // Check if current user is admin
+    if (user?.role !== 'administrator') {
+      throw new Error('Only administrators can update user roles');
+    }
+    
+    try {
+      const userDocRef = doc(db, 'users', userId);
+      await updateDoc(userDocRef, {
+        role: role,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     await signOut(auth);
     setUser(null);
@@ -191,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasRole,
         logout,
         updateUserName,
+        updateUserRole,
       }}>
       {children}
     </AuthContext.Provider>

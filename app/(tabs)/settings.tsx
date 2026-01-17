@@ -21,6 +21,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { NamePromptModal } from '@/components/name-prompt-modal';
+import { UserManagementModal } from '@/components/user-management-modal';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -136,12 +137,14 @@ function ProfileInfoRow({
 }
 
 export default function SettingsScreen() {
-  const { user, logout, updateUserName } = useAuth();
+  const { user, logout, updateUserName, hasRole } = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const [isNameModalVisible, setIsNameModalVisible] = useState(false);
+  const [isUserManagementVisible, setIsUserManagementVisible] = useState(false);
   const themeColors = Colors[colorScheme ?? 'light'];
   const backgroundColor = useThemeColor({}, 'background');
+  const isAdmin = hasRole('administrator');
 
   const handleEditName = () => {
     if (Platform.OS === 'ios') {
@@ -276,6 +279,41 @@ export default function SettingsScreen() {
           </SportyCard>
         </ThemedView>
 
+        {/* Admin Section */}
+        {isAdmin && (
+          <ThemedView style={styles.section}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              Administrator
+            </ThemedText>
+
+            {/* Manage Users Button */}
+            <SportyCard delay={200}>
+              <AnimatedTouchableOpacity
+                style={[
+                  styles.adminButton,
+                  {
+                    backgroundColor: colorScheme === 'dark' ? '#0a7ea4' : themeColors.tint,
+                  },
+                ]}
+                onPress={() => {
+                  if (Platform.OS === 'ios') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }
+                  setIsUserManagementVisible(true);
+                }}
+                activeOpacity={0.8}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Manage Users"
+                accessibilityHint="Double tap to view and manage all users"
+                entering={FadeInDown.delay(200).springify()}>
+                <IconSymbol name="person.3.fill" size={22} color="#fff" />
+                <ThemedText style={styles.adminButtonText}>Manage Users</ThemedText>
+              </AnimatedTouchableOpacity>
+            </SportyCard>
+          </ThemedView>
+        )}
+
         {/* Actions Section */}
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>
@@ -283,7 +321,7 @@ export default function SettingsScreen() {
           </ThemedText>
 
           {/* Logout Button */}
-          <SportyCard delay={200}>
+          <SportyCard delay={isAdmin ? 300 : 200}>
             <AnimatedTouchableOpacity
               style={[
                 styles.logoutButton,
@@ -297,7 +335,7 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               accessibilityLabel="Logout"
               accessibilityHint="Double tap to log out of your account"
-              entering={FadeInDown.delay(200).springify()}>
+              entering={FadeInDown.delay(isAdmin ? 300 : 200).springify()}>
               <IconSymbol name="arrow.right.square.fill" size={22} color="#fff" />
               <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
             </AnimatedTouchableOpacity>
@@ -311,6 +349,14 @@ export default function SettingsScreen() {
         currentName={user?.name}
         onSave={handleSaveName}
       />
+
+      {/* User Management Modal */}
+      {isAdmin && (
+        <UserManagementModal
+          visible={isUserManagementVisible}
+          onClose={() => setIsUserManagementVisible(false)}
+        />
+      )}
     </>
   );
 }
@@ -414,6 +460,34 @@ const styles = StyleSheet.create({
     }),
   },
   logoutButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    gap: 10,
+    minHeight: 56, // Minimum touch target for accessibility
+    // Sporty shadow
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  adminButtonText: {
     color: '#fff',
     fontSize: 17,
     fontWeight: '700',
