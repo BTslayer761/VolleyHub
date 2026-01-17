@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Modal, StyleSheet, TextInput, TouchableOpacity, View, Platform, AccessibilityInfo } from 'react-native';
+import { Alert, Modal, StyleSheet, TextInput, TouchableOpacity, View, Platform, AccessibilityInfo, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
@@ -164,10 +164,8 @@ export function NamePromptModal({ visible, currentName, onSave }: NamePromptModa
                 styles.button,
                 styles.saveButton,
                 {
-                  backgroundColor: inputBackgroundColor,
-                  borderColor: !name.trim() ? borderColor : themeColors.tint,
-                  borderWidth: 1,
-                  opacity: !name.trim() ? 0.6 : 1,
+                  backgroundColor: colorScheme === 'dark' ? '#0a7ea4' : themeColors.tint,
+                  opacity: (!name.trim() || isSaving) ? 0.6 : 1,
                 },
                 buttonAnimatedStyle,
               ]}
@@ -179,9 +177,13 @@ export function NamePromptModal({ visible, currentName, onSave }: NamePromptModa
               accessibilityLabel={isSaving ? 'Saving name' : 'Save name'}
               accessibilityState={{ disabled: !name.trim() || isSaving }}
               entering={FadeInDown.delay(200).springify()}>
-              <ThemedText style={[styles.buttonText, { color: textColor }]}>
-                {isSaving ? 'Saving...' : 'Save'}
-              </ThemedText>
+              {isSaving ? (
+                <ActivityIndicator color={textColor} />
+              ) : (
+                <ThemedText style={[styles.buttonText, { color: textColor }]}>
+                  Save
+                </ThemedText>
+              )}
             </AnimatedTouchableOpacity>
           </View>
         </AnimatedView>
@@ -243,15 +245,15 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56, // Minimum touch target
+    paddingHorizontal: 16,
   },
   saveButton: {
-    // backgroundColor and borderColor set dynamically
+    // backgroundColor set dynamically
   },
   buttonText: {
     fontSize: 16,

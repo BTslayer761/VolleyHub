@@ -4,10 +4,10 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { ScreenShatter } from '@/components/screen-shatter';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { VolleyballAnimation } from '@/components/volleyball-animation';
+import { VolleyballTransition } from '@/components/volleyball-transition';
 import { auth } from '@/config/firebase';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -56,11 +56,11 @@ export default function LoginScreen() {
   };
 
   const handleVolleyballHit = () => {
-    // Trigger shatter animation
+    // Trigger smooth volleyball transition
     setShowShatter(true);
   };
 
-  const handleShatterComplete = () => {
+  const handleTransitionComplete = () => {
     // Navigate directly to main app tabs
     router.replace('/(tabs)');
   };
@@ -306,7 +306,7 @@ export default function LoginScreen() {
       )}
 
       {showShatter && (
-        <ScreenShatter onComplete={handleShatterComplete} />
+        <VolleyballTransition onComplete={handleTransitionComplete} />
       )}
     </ThemedView>
   );
