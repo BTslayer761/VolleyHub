@@ -1,13 +1,15 @@
 /**
- * Script to add first 20 users to all courts
+ * Script to add first 20 users to all courts in FCFS order
  * Run with: node scripts/add-users-to-courts.js
  * 
  * This script:
  * - Gets all courts from Firestore
  * - Gets the first 20 users from Firestore
- * - Creates bookings for each user to each court
+ * - Creates bookings for each user to each court SEQUENTIALLY (one at a time)
+ * - Adds small delays between bookings so they appear in real-time on Expo Go
  * - For indoor courts: respects maxSlots (first users get slots, rest go to waitlist)
  * - For outdoor courts: creates RSVP bookings for all users
+ * - All bookings are created in FCFS order (by createdAt timestamp)
  */
 
 const { initializeApp } = require('firebase/app');
@@ -44,6 +46,11 @@ function timestampToDate(timestamp) {
     return new Date(timestamp);
   }
   return new Date();
+}
+
+// Helper function to add delay between operations (for real-time visibility)
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function addUsersToCourts() {
@@ -141,8 +148,9 @@ async function addUsersToCourts() {
       console.log(`\n🏐 Processing court: ${court.name} (${court.type})`);
       
       if (court.type === 'outdoor') {
-        // Outdoor court: Add all users as RSVP
-        for (const user of users) {
+        // Outdoor court: Add all users as RSVP sequentially (FCFS order)
+        for (let i = 0; i < users.length; i++) {
+          const user = users[i];
           const bookingKey = `${court.id}_${user.id}`;
           if (existingBookings.has(bookingKey)) {
             console.log(`  ⚠️  Booking already exists: ${user.name}`);
@@ -151,6 +159,11 @@ async function addUsersToCourts() {
           }
           
           try {
+            // Add delay between bookings for real-time visibility (500ms)
+            if (i > 0) {
+              await delay(500);
+            }
+            
             await addDoc(bookingsRefForWrite, {
               userId: user.id,
               courtId: court.id,
@@ -158,7 +171,7 @@ async function addUsersToCourts() {
               createdAt: Timestamp.now(),
               updatedAt: Timestamp.now(),
             });
-            console.log(`  ✅ Added: ${user.name}`);
+            console.log(`  ✅ Added: ${user.name} (${i + 1}/${users.length})`);
             totalCreated++;
             existingBookings.add(bookingKey); // Track to avoid duplicates in same run
           } catch (error) {
@@ -192,12 +205,19 @@ async function addUsersToCourts() {
         let nextSlotIndex = maxSlotIndex + 1;
         let usersAdded = 0;
         
-        for (const user of users) {
+        // Process users sequentially (one at a time) for FCFS order
+        for (let i = 0; i < users.length; i++) {
+          const user = users[i];
           const bookingKey = `${court.id}_${user.id}`;
           if (existingBookings.has(bookingKey)) {
             console.log(`  ⚠️  Booking already exists: ${user.name}`);
             totalSkipped++;
             continue;
+          }
+          
+          // Add delay between bookings for real-time visibility (500ms)
+          if (i > 0) {
+            await delay(500);
           }
           
           const slotsAvailable = (currentSlotsFilled + usersAdded) < maxSlots;
@@ -226,7 +246,7 @@ async function addUsersToCourts() {
               userId: user.id,
               courtId: court.id,
               status: bookingStatus,
-              createdAt: Timestamp.now(),
+              createdAt: Timestamp.now(), // Sequential timestamps ensure FCFS order
             };
             
             if (slotIndex !== undefined) {
@@ -237,14 +257,14 @@ async function addUsersToCourts() {
             await addDoc(bookingsRefForWrite, bookingData);
             
             if (bookingStatus === 'waitlisted') {
-              console.log(`  📋 Waitlisted: ${user.name}`);
+              console.log(`  📋 Waitlisted: ${user.name} (${i + 1}/${users.length})`);
               totalWaitlisted++;
             } else if (slotIndex !== undefined) {
-              console.log(`  ✅ Added: ${user.name} (Slot ${slotIndex + 1})`);
+              console.log(`  ✅ Added: ${user.name} (Slot ${slotIndex + 1}, ${i + 1}/${users.length})`);
               totalCreated++;
               usersAdded++;
             } else {
-              console.log(`  ⏳ Pending: ${user.name}`);
+              console.log(`  ⏳ Pending: ${user.name} (${i + 1}/${users.length})`);
               totalCreated++;
               usersAdded++;
             }

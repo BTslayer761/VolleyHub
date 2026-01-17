@@ -122,119 +122,8 @@ const getUserName = async (userId: string): Promise<string> => {
 };
 
 /**
- * Get past confirmed indoor court bookings for a user with court dates
- * Used to calculate priority based on participation frequency and recency
- */
-const getPastIndoorBookingsWithCourtDates = async (userId: string, currentCourtDate: Date): Promise<Array<{ booking: Booking; courtDate: Date }>> => {
-  try {
-    const fourWeeksAgo = new Date(currentCourtDate);
-    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // 4 weeks = 28 days
-
-    const bookingsRef = collection(db, 'bookings');
-    const q = query(
-      bookingsRef,
-      where('userId', '==', userId),
-      where('status', '==', 'confirmed'),
-      orderBy('createdAt', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
-
-    const pastBookings: Array<{ booking: Booking; courtDate: Date }> = [];
-    
-    // Process bookings in parallel to get court dates
-    const bookingPromises = querySnapshot.docs.map(async (docSnapshot) => {
-      const booking = firestoreDocToBooking(docSnapshot.data(), docSnapshot.id);
-      
-      // Only include indoor court bookings (have slotIndex)
-      if (booking.slotIndex !== undefined) {
-        try {
-          // Get court date from court document
-          const court = await courtService.getCourtById(booking.courtId);
-          if (court && court.type === 'indoor' && court.date >= fourWeeksAgo && court.date < currentCourtDate) {
-            return {
-              booking,
-              courtDate: court.date,
-            };
-          }
-        } catch (error) {
-          // Skip if court not found or error
-          console.warn(`Could not fetch court ${booking.courtId} for priority calculation:`, error);
-        }
-      }
-      return null;
-    });
-
-    const results = await Promise.all(bookingPromises);
-    results.forEach((result) => {
-      if (result !== null) {
-        pastBookings.push(result);
-      }
-    });
-
-    // Sort by court date (most recent first)
-    pastBookings.sort((a, b) => b.courtDate.getTime() - a.courtDate.getTime());
-
-    return pastBookings;
-  } catch (error) {
-    console.error('Error fetching past indoor bookings:', error);
-    return [];
-  }
-};
-
-/**
- * Calculate priority score for a user
- * Higher score = Higher priority
- * - People who didn't get a slot last week OR haven't gone in a long time = HIGH priority
- * - People who have been to many sessions recently = LOW priority
- */
-const calculatePriorityScore = async (
-  userId: string,
-  currentCourtDate: Date
-): Promise<number> => {
-  try {
-    const pastBookingsWithDates = await getPastIndoorBookingsWithCourtDates(userId, currentCourtDate);
-    
-    if (pastBookingsWithDates.length === 0) {
-      // No past bookings = highest priority (hasn't gone in a long time)
-      return 1000;
-    }
-
-    // Check if user had a booking last week (court date within 7 days before current court date)
-    const oneWeekAgo = new Date(currentCourtDate);
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const lastWeekEnd = new Date(currentCourtDate);
-    lastWeekEnd.setDate(lastWeekEnd.getDate() - 1);
-
-    const hadSlotLastWeek = pastBookingsWithDates.some(({ courtDate }) => {
-      // Check if court happened last week
-      return courtDate >= oneWeekAgo && courtDate <= lastWeekEnd;
-    });
-
-    // If user didn't get a slot last week, give high priority
-    if (!hadSlotLastWeek) {
-      // Higher priority based on how long since last booking (court date)
-      const lastCourtDate = pastBookingsWithDates[0].courtDate;
-      const daysSinceLastBooking = Math.floor(
-        (currentCourtDate.getTime() - lastCourtDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      // More days since last booking = higher priority (max 500)
-      return 500 + Math.min(daysSinceLastBooking * 10, 500);
-    }
-
-    // User had a slot last week - calculate based on frequency
-    // More frequent bookings = lower priority
-    // Cap at 20 bookings for calculation (more than that is still min priority)
-    const frequencyScore = Math.max(100 - Math.min(pastBookingsWithDates.length, 20) * 5, 0);
-    return frequencyScore;
-  } catch (error) {
-    console.error('Error calculating priority score:', error);
-    return 100; // Default priority if calculation fails
-  }
-};
-
-/**
- * Process deadline for a priority court
- * Confirms pending bookings based on priority, assigns slots
+ * Process deadline for a priority court - converts pending bookings to confirmed (FCFS order)
+ * All bookings are now FCFS, so we just confirm pending bookings in order of creation
  */
 const processDeadlineForCourt = async (courtId: string, maxSlots: number): Promise<void> => {
   try {
@@ -251,16 +140,29 @@ const processDeadlineForCourt = async (courtId: string, maxSlots: number): Promi
       return; // Deadline hasn't passed yet
     }
 
-    // Get all pending bookings for this court
-    const pendingQuery = query(
-      bookingsRef,
-      where('courtId', '==', courtId),
-      where('status', '==', 'pending')
-    );
-    const pendingSnapshot = await getDocs(pendingQuery);
+    // Get all pending bookings for this court (sorted by creation time - FCFS order)
+    let pendingSnapshot;
+    try {
+      const pendingQuery = query(
+        bookingsRef,
+        where('courtId', '==', courtId),
+        where('status', '==', 'pending'),
+        orderBy('createdAt', 'asc')
+      );
+      pendingSnapshot = await getDocs(pendingQuery);
+    } catch (orderByError: any) {
+      // If orderBy fails (no index), get all and sort client-side
+      console.warn('orderBy failed, sorting client-side:', orderByError);
+      const pendingQuery = query(
+        bookingsRef,
+        where('courtId', '==', courtId),
+        where('status', '==', 'pending')
+      );
+      pendingSnapshot = await getDocs(pendingQuery);
+    }
 
     if (pendingSnapshot.empty) {
-      return; // No pending bookings
+      return; // No pending bookings to process
     }
 
     // Get all confirmed bookings to find available slots
@@ -284,21 +186,18 @@ const processDeadlineForCourt = async (courtId: string, maxSlots: number): Promi
       return b.slotIndex !== undefined && b.slotIndex > max ? b.slotIndex : max;
     }, -1);
 
-    // Calculate priority for each pending booking
-    const pendingWithPriority: Array<{ booking: Booking; docId: string; priority: number }> = [];
-    
-    for (const docSnapshot of pendingSnapshot.docs) {
+    // Process pending bookings in FCFS order (by createdAt)
+    const pendingBookings: Array<{ booking: Booking; docId: string }> = [];
+    pendingSnapshot.forEach((docSnapshot) => {
       const booking = firestoreDocToBooking(docSnapshot.data(), docSnapshot.id);
-      const priority = await calculatePriorityScore(booking.userId, court.date);
-      pendingWithPriority.push({
+      pendingBookings.push({
         booking,
         docId: docSnapshot.id,
-        priority,
       });
-    }
+    });
 
-    // Sort by priority (descending - higher priority first)
-    pendingWithPriority.sort((a, b) => b.priority - a.priority);
+    // Sort by creation time (FCFS order) - in case orderBy failed
+    pendingBookings.sort((a, b) => a.booking.createdAt.getTime() - b.booking.createdAt.getTime());
 
     // Use batch to update multiple bookings atomically
     const batch = writeBatch(db);
@@ -306,11 +205,12 @@ const processDeadlineForCourt = async (courtId: string, maxSlots: number): Promi
     let nextSlotIndex = maxSlotIndex + 1;
     let slotsAssigned = 0;
 
-    for (const { booking, docId, priority } of pendingWithPriority) {
+    // Process in order of creation (FCFS)
+    for (const { booking, docId } of pendingBookings) {
       const bookingRef = doc(db, 'bookings', docId);
       
       if (currentSlotsFilled + slotsAssigned < maxSlots) {
-        // Assign slot - confirm booking
+        // Assign slot - confirm booking (FCFS order)
         batch.update(bookingRef, {
           status: 'confirmed',
           slotIndex: nextSlotIndex,
@@ -328,7 +228,7 @@ const processDeadlineForCourt = async (courtId: string, maxSlots: number): Promi
     }
 
     await batch.commit();
-    console.log(`Processed deadline for court ${courtId}: ${slotsAssigned} confirmed, ${pendingWithPriority.length - slotsAssigned} waitlisted`);
+    console.log(`Processed deadline for court ${courtId}: ${slotsAssigned} confirmed (FCFS), ${pendingBookings.length - slotsAssigned} waitlisted`);
   } catch (error) {
     console.error('Error processing deadline for court:', error);
     // Don't throw - allow the operation to continue
@@ -360,9 +260,29 @@ export const mockBookingService: BookingService = {
   /**
    * Create booking/RSVP for outdoor court
    */
+  /**
+   * Create booking/RSVP for outdoor court
+   * FCFS order: joining adds you to the list
+   * Cancelling removes your position; rejoining puts you at the bottom (new position)
+   */
   createOutdoorBooking: async (courtId: string, userId: string) => {
     try {
       const bookingsRef = collection(db, 'bookings');
+      
+      // Check if user already has a booking for this court
+      const existingBookingQuery = query(
+        bookingsRef,
+        where('courtId', '==', courtId),
+        where('userId', '==', userId),
+        where('isGoing', '==', true)
+      );
+      const existingBookingSnapshot = await getDocs(existingBookingQuery);
+      
+      if (!existingBookingSnapshot.empty) {
+        // User already has a booking - they need to cancel first
+        throw new Error('You already have a booking for this court. Please cancel it first before rejoining.');
+      }
+
       const newBooking: Partial<Booking> = {
         userId,
         courtId,
@@ -408,10 +328,11 @@ export const mockBookingService: BookingService = {
 
   /**
    * Request indoor court slot
-   * For FCFS mode: immediately confirms and assigns slot, or waitlists if full
-   * For Priority mode: 
-   *   - Before deadline: creates pending booking (will be sorted by priority at deadline)
-   *   - After deadline: acts like FCFS (adds to bottom of list), waitlists if full
+   * All indoor courts now use FCFS (First Come First Served):
+   * - Joining adds you to the bottom of the list (new createdAt timestamp)
+   * - If full, adds to waitlist
+   * - Cancelling removes your position; rejoining puts you at the bottom (new position)
+   * - For priority courts, deadline just confirms pending bookings in FCFS order
    */
   requestIndoorSlot: async (
     courtId: string,
@@ -422,15 +343,30 @@ export const mockBookingService: BookingService = {
     try {
       const bookingsRef = collection(db, 'bookings');
 
-      // Get court details to check deadline for priority mode
+      // Get court details
       const court = await courtService.getCourtById(courtId);
-      const isPriorityMode = bookingMode === 'priority' || (!bookingMode && court?.bookingMode === 'priority');
+      const isPriorityMode = (bookingMode || court?.bookingMode) === 'priority';
       const deadlinePassed = court?.deadline && court.deadline < new Date();
-      const effectiveBookingMode = (isPriorityMode && !deadlinePassed) ? 'priority' : 'fcfs';
 
-      // Process deadline if it has passed (before checking slots)
+      // Process deadline if it has passed (converts pending to confirmed in FCFS order)
       if (isPriorityMode && deadlinePassed && maxSlots !== undefined) {
         await processDeadlineForCourt(courtId, maxSlots);
+      }
+
+      // Check if user already has a booking for this court (any status: confirmed, pending, or waitlisted)
+      // If they do, they should cancel first before rejoining
+      // This ensures cancellation removes your position, and rejoining puts you at the bottom
+      const existingBookingQuery = query(
+        bookingsRef,
+        where('courtId', '==', courtId),
+        where('userId', '==', userId)
+      );
+      const existingBookingSnapshot = await getDocs(existingBookingQuery);
+      
+      if (!existingBookingSnapshot.empty) {
+        // User already has a booking - they need to cancel first
+        // This enforces: cancel removes position, rejoin puts you at bottom (new createdAt timestamp)
+        throw new Error('You already have a booking for this court. Please cancel it first before rejoining.');
       }
 
       // Get all confirmed bookings for this court (those with slotIndex)
@@ -452,9 +388,8 @@ export const mockBookingService: BookingService = {
       const currentSlotsFilled = confirmedBookings.length;
       const isFull = maxSlots !== undefined && currentSlotsFilled >= maxSlots;
 
-      // For FCFS mode OR priority mode after deadline: assign slot immediately if available, else waitlist
-      // After deadline, priority mode becomes FCFS - new requests add to bottom
-      if (effectiveBookingMode === 'fcfs') {
+      // For priority mode before deadline: create pending booking (will be confirmed at deadline in FCFS order)
+      if (isPriorityMode && !deadlinePassed) {
         if (isFull) {
           // Court is full - add to waitlist
           const newBooking: Partial<Booking> = {
@@ -472,18 +407,12 @@ export const mockBookingService: BookingService = {
           } as Booking;
         }
 
-        // Court has space - assign slot immediately (add to bottom of list)
-        const maxSlotIndex = confirmedBookings.reduce((max, b) => {
-          return b.slotIndex !== undefined && b.slotIndex > max ? b.slotIndex : max;
-        }, -1);
-
+        // Court has space - create pending booking (will be confirmed at deadline in FCFS order)
         const newBooking: Partial<Booking> = {
           userId,
           courtId,
-          status: 'confirmed',
-          slotIndex: maxSlotIndex + 1,
+          status: 'pending',
           createdAt: new Date(),
-          updatedAt: new Date(),
         };
 
         const docRef = await addDoc(bookingsRef, bookingToFirestoreDoc(newBooking));
@@ -491,13 +420,12 @@ export const mockBookingService: BookingService = {
           id: docRef.id,
           ...newBooking,
           createdAt: newBooking.createdAt!,
-          updatedAt: newBooking.updatedAt!,
         } as Booking;
       }
 
-      // For Priority mode before deadline: create pending booking if not full, else waitlist
+      // For FCFS mode OR priority mode after deadline: assign slot immediately (add to bottom)
       if (isFull) {
-        // Court is full - add to waitlist
+        // Court is full - add to waitlist (FCFS order)
         const newBooking: Partial<Booking> = {
           userId,
           courtId,
@@ -513,12 +441,31 @@ export const mockBookingService: BookingService = {
         } as Booking;
       }
 
-      // Court has space - create pending booking (will be assigned by priority at deadline)
+      // Court has space - assign slot immediately (add to bottom of list, FCFS order)
+      // Calculate maxSlotIndex from all confirmed bookings with slotIndex
+      // This ensures new joins are always placed at the bottom (highest slot number)
+      let maxSlotIndex = -1;
+      confirmedBookings.forEach((b) => {
+        if (b.slotIndex !== undefined && typeof b.slotIndex === 'number') {
+          if (b.slotIndex > maxSlotIndex) {
+            maxSlotIndex = b.slotIndex;
+          }
+        }
+      });
+
+      // Next slot is one after the maximum (ensures bottom placement)
+      // If maxSlotIndex is -1 (no bookings), nextSlotIndex will be 0
+      const nextSlotIndex = maxSlotIndex + 1;
+
+      console.log(`[Booking] Joining court ${courtId}: maxSlotIndex=${maxSlotIndex}, nextSlotIndex=${nextSlotIndex}, totalConfirmed=${confirmedBookings.length}`);
+
       const newBooking: Partial<Booking> = {
         userId,
         courtId,
-        status: 'pending',
+        status: 'confirmed',
+        slotIndex: nextSlotIndex,
         createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       const docRef = await addDoc(bookingsRef, bookingToFirestoreDoc(newBooking));
@@ -526,6 +473,7 @@ export const mockBookingService: BookingService = {
         id: docRef.id,
         ...newBooking,
         createdAt: newBooking.createdAt!,
+        updatedAt: newBooking.updatedAt!,
       } as Booking;
     } catch (error) {
       console.error('Error requesting indoor slot:', error);
@@ -555,21 +503,49 @@ export const mockBookingService: BookingService = {
 
       // If the cancelled booking had a slotIndex (was in main list), promote first waitlisted person
       if (freedSlotIndex !== undefined && courtIdForWaitlist) {
-        // Find the first waitlisted booking for this court (ordered by createdAt)
+        // Find the first waitlisted booking for this court (ordered by createdAt - FCFS order)
         const bookingsRef = collection(db, 'bookings');
-        const waitlistedQuery = query(
-          bookingsRef,
-          where('courtId', '==', courtIdForWaitlist),
-          where('status', '==', 'waitlisted'),
-          orderBy('createdAt', 'asc')
-        );
-        const waitlistedSnapshot = await getDocs(waitlistedQuery);
+        let firstWaitlistedDocId: string | null = null;
+        
+        try {
+          // Try query with orderBy first (faster if index exists)
+          const waitlistedQuery = query(
+            bookingsRef,
+            where('courtId', '==', courtIdForWaitlist),
+            where('status', '==', 'waitlisted'),
+            orderBy('createdAt', 'asc')
+          );
+          const waitlistedSnapshot = await getDocs(waitlistedQuery);
+          
+          if (!waitlistedSnapshot.empty) {
+            firstWaitlistedDocId = waitlistedSnapshot.docs[0].id;
+          }
+        } catch (orderByError: any) {
+          // If orderBy fails (no index), get all and sort client-side
+          console.warn('orderBy failed in cancelIndoorBooking, sorting client-side:', orderByError);
+          const waitlistedQuery = query(
+            bookingsRef,
+            where('courtId', '==', courtIdForWaitlist),
+            where('status', '==', 'waitlisted')
+          );
+          const waitlistedSnapshot = await getDocs(waitlistedQuery);
+          
+          // Sort client-side by createdAt (FCFS order)
+          const waitlistedBookings: Array<{ docId: string; createdAt: Date }> = [];
+          waitlistedSnapshot.forEach((docSnapshot) => {
+            const booking = firestoreDocToBooking(docSnapshot.data(), docSnapshot.id);
+            waitlistedBookings.push({ docId: docSnapshot.id, createdAt: booking.createdAt });
+          });
+          waitlistedBookings.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+          
+          if (waitlistedBookings.length > 0) {
+            firstWaitlistedDocId = waitlistedBookings[0].docId;
+          }
+        }
 
-        if (!waitlistedSnapshot.empty) {
-          const firstWaitlistedDoc = waitlistedSnapshot.docs[0];
-          const firstWaitlistedRef = doc(db, 'bookings', firstWaitlistedDoc.id);
-
-          // Promote first waitlisted person to confirmed with the freed slot
+        // Promote first waitlisted person to confirmed with the freed slot (FCFS order)
+        if (firstWaitlistedDocId) {
+          const firstWaitlistedRef = doc(db, 'bookings', firstWaitlistedDocId);
           await updateDoc(firstWaitlistedRef, {
             status: 'confirmed',
             slotIndex: freedSlotIndex,
@@ -586,13 +562,15 @@ export const mockBookingService: BookingService = {
   /**
    * Get list of participants for a court
    * Returns participants sorted: confirmed (by slot), pending, waitlisted (by creation time)
-   * Also processes deadline for priority courts if it has passed
+   * Also processes deadline for priority courts if it has passed (converts pending to confirmed in FCFS order)
    */
   getCourtParticipants: async (courtId: string): Promise<Participant[]> => {
     try {
-      // Check if this is a priority court with deadline passed, and process it
+      // Check if this is a priority court with deadline passed, and process pending bookings
+      // Converts pending bookings to confirmed in FCFS order (by creation time)
       const court = await courtService.getCourtById(courtId);
       if (court?.bookingMode === 'priority' && court.deadline && court.deadline < new Date() && court.maxSlots) {
+        // Processes pending bookings in FCFS order (by createdAt)
         await processDeadlineForCourt(courtId, court.maxSlots);
       }
 
@@ -604,6 +582,10 @@ export const mockBookingService: BookingService = {
       querySnapshot.forEach((docSnapshot) => {
         courtBookings.push(firestoreDocToBooking(docSnapshot.data(), docSnapshot.id));
       });
+
+      // Sort all bookings by createdAt for FCFS order (outdoor courts and waitlist)
+      // This ensures consistent ordering without requiring Firestore indexes
+      courtBookings.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
       // Sort waitlisted bookings by createdAt to determine waitlist position
       const waitlistedBookings = courtBookings

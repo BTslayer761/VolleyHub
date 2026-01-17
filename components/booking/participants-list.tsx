@@ -6,14 +6,14 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Collapsible } from '@/components/ui/collapsible';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // Mock services (temporary - will be replaced with real services during integration)
@@ -58,21 +58,38 @@ export function ParticipantsList({ court, showTitle = true, onRefresh }: Partici
       const participantsList = await mockBookingService.getCourtParticipants(court.id);
       
       // Sort participants: confirmed first (with slots for indoor), then pending, then waitlisted
+      // Within each status group, sort by appropriate order (slotIndex for confirmed, waitlistPosition for waitlisted)
       const sorted = participantsList.sort((a, b) => {
-        // For indoor courts, sort by slot number first
-        if (court.type === 'indoor') {
-          if (a.slotIndex !== undefined && b.slotIndex !== undefined) {
-            return a.slotIndex - b.slotIndex;
-          }
-          if (a.slotIndex !== undefined) return -1;
-          if (b.slotIndex !== undefined) return 1;
-        }
-        
-        // Then sort by status
         const statusOrder: BookingStatus[] = ['confirmed', 'pending', 'waitlisted'];
         const aStatus = a.status || 'pending';
         const bStatus = b.status || 'pending';
-        return statusOrder.indexOf(aStatus) - statusOrder.indexOf(bStatus);
+        const statusDiff = statusOrder.indexOf(aStatus) - statusOrder.indexOf(bStatus);
+        
+        // If different statuses, sort by status order
+        if (statusDiff !== 0) {
+          return statusDiff;
+        }
+        
+        // Same status - sort within status group
+        if (aStatus === 'confirmed' && court.type === 'indoor') {
+          // Sort confirmed indoor by slotIndex (FCFS order)
+          const aSlot = a.slotIndex ?? Infinity;
+          const bSlot = b.slotIndex ?? Infinity;
+          return aSlot - bSlot;
+        } else if (aStatus === 'confirmed' && court.type === 'outdoor') {
+          // For outdoor courts, participants are already sorted by createdAt in getCourtParticipants
+          // Keep stable order (FCFS - first joined appears first)
+          return 0;
+        } else if (aStatus === 'waitlisted') {
+          // Sort waitlisted by waitlistPosition (FCFS order - lower position = joined earlier)
+          const aPos = a.waitlistPosition ?? Infinity;
+          const bPos = b.waitlistPosition ?? Infinity;
+          return aPos - bPos;
+        }
+        
+        // Same status but no specific sort (pending, etc.)
+        // Keep stable order from getCourtParticipants (already sorted by createdAt)
+        return 0;
       });
 
       setParticipants(sorted);
