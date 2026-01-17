@@ -1,5 +1,4 @@
-import { Link } from 'expo-router';
-import { Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
@@ -35,15 +34,8 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedView style={styles.titleRow}>
-          <ThemedText type="title">My Bookings</ThemedText>
-          <HelloWave />
-        </ThemedView>
-        <Link href="/booking-demo" asChild>
-          <TouchableOpacity style={styles.testButton} activeOpacity={0.7}>
-            <ThemedText style={styles.testButtonText}>🧪 Test Components</ThemedText>
-          </TouchableOpacity>
-        </Link>
+        <ThemedText type="title">My Bookings</ThemedText>
+        <HelloWave />
       </ThemedView>
 
       {loading ? (
@@ -59,27 +51,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   titleContainer: {
-    gap: 12,
-    marginBottom: 8,
-  },
-  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  testButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
-  },
-  testButtonText: {
-    color: '#3B82F6',
-    fontSize: 14,
-    fontWeight: '600',
   },
   reactLogo: {
     height: 178,

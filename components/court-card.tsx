@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -6,12 +6,18 @@ import { Court } from '@/shared/types/court.types';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+// Booking components
+import { OutdoorBookingButton } from '@/components/booking/outdoor-booking-button';
+import { IndoorBookingButton } from '@/components/booking/indoor-booking-button';
+import { ParticipantsList } from '@/components/booking/participants-list';
+
 interface CourtCardProps {
   court: Court;
 }
 
 export default function CourtCard({ court }: CourtCardProps) {
   const colorScheme = useColorScheme();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -24,6 +30,11 @@ export default function CourtCard({ court }: CourtCardProps) {
 
   const formatTime = (time: string) => {
     return time;
+  };
+
+  // Handle booking changes to refresh participants list
+  const handleBookingChange = () => {
+    setRefreshKey((prev) => prev + 1);
   };
 
   return (
@@ -85,6 +96,20 @@ export default function CourtCard({ court }: CourtCardProps) {
           </View>
         )}
       </View>
+
+      {/* Booking Button */}
+      <View style={styles.bookingSection}>
+        {court.type === 'outdoor' ? (
+          <OutdoorBookingButton court={court} onBookingChange={handleBookingChange} />
+        ) : (
+          <IndoorBookingButton court={court} onBookingChange={handleBookingChange} />
+        )}
+      </View>
+
+      {/* Participants List */}
+      <View style={styles.participantsSection} key={`participants-${refreshKey}`}>
+        <ParticipantsList court={court} showTitle={true} />
+      </View>
     </ThemedView>
   );
 }
@@ -135,5 +160,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     textAlign: 'right',
+  },
+  bookingSection: {
+    marginTop: 16,
+    alignItems: 'flex-start',
+  },
+  participantsSection: {
+    marginTop: 12,
   },
 });
