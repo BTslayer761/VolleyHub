@@ -1,25 +1,20 @@
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { initializeApp } from 'firebase/app';
+import { Auth, getAuth } from 'firebase/auth';
 
 // Your Firebase configuration
 // Replace these values with your Firebase project config
 // You can find these in Firebase Console > Project Settings > General > Your apps
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || 'your-api-key',
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || 'your-project.firebaseapp.com',
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'your-project-id',
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || 'your-project.appspot.com',
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || 'your-sender-id',
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || 'your-app-id',
+    apiKey: "AIzaSyB4jB_dUghbB0JPAo6g7FTlGAWzn-MkyeE",
+    authDomain: "volleyhub-c3e4f.firebaseapp.com",
+    projectId: "volleyhub-c3e4f",
+    storageBucket: "volleyhub-c3e4f.firebasestorage.app",
+    messagingSenderId: "1015546927163",
+    appId: "1:1015546927163:web:577f8c7e1d2f9226df241e",
+    measurementId: "G-J7WNEFDV57"
 };
 
-// Initialize Firebase
-let app: FirebaseApp;
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApps()[0];
-}
+const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase Authentication and get a reference to the service
 export const auth: Auth = getAuth(app);

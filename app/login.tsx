@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
@@ -5,7 +6,6 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, TextInpu
 
 import { ScreenShatter } from '@/components/screen-shatter';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { VolleyballAnimation } from '@/components/volleyball-animation';
 import { auth } from '@/config/firebase';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -67,34 +67,52 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Volleyball-themed gradient background */}
+      {/* Pastel yellow background */}
       <View style={styles.backgroundGradient}>
-        <View style={[styles.backgroundCircle, { backgroundColor: '#0066CC', opacity: 0.25 }]} />
-        <View style={[styles.backgroundCircle, styles.backgroundCircle2, { backgroundColor: '#0066CC', opacity: 0.2 }]} />
-        <View style={[styles.backgroundCircle, styles.backgroundCircle3, { backgroundColor: '#FFD700', opacity: 0.1 }]} />
+        {/* Decorative volleyballs */}
+        <Image
+          source={require('@/assets/images/volleyball.png')}
+          style={styles.volleyball1}
+          contentFit="contain"
+        />
+        <Image
+          source={require('@/assets/images/volleyball.png')}
+          style={styles.volleyball2}
+          contentFit="contain"
+        />
+        <Image
+          source={require('@/assets/images/volleyball.png')}
+          style={styles.volleyball3}
+          contentFit="contain"
+        />
+        <Image
+          source={require('@/assets/images/volleyball.png')}
+          style={styles.volleyball4}
+          contentFit="contain"
+        />
       </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
-        <ThemedView style={styles.content}>
+        <View style={styles.content}>
           <ThemedText type="title" style={styles.title}>
             VolleyHub
           </ThemedText>
           
-          <ThemedView style={styles.form}>
-            <ThemedView style={styles.inputContainer}>
-              <ThemedText style={styles.label}>Email</ThemedText>
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <ThemedText style={[styles.label, { color: '#000000' }]}>Email</ThemedText>
               <TextInput
                 style={[
                   styles.input,
                   { 
-                    color: textColor, 
-                    borderColor: colorScheme === 'dark' ? '#444' : '#ddd',
-                    backgroundColor: colorScheme === 'dark' ? '#222' : '#f9f9f9',
+                    color: '#000000', 
+                    borderColor: '#004080',
+                    backgroundColor: 'rgba(255, 249, 196, 0.5)',
                   }
                 ]}
                 placeholder="Enter email"
-                placeholderTextColor={colorScheme === 'dark' ? '#666' : '#999'}
+                placeholderTextColor="#666666"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -102,21 +120,21 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 editable={!loading}
               />
-            </ThemedView>
+            </View>
 
-            <ThemedView style={styles.inputContainer}>
-              <ThemedText style={styles.label}>Password</ThemedText>
+            <View style={styles.inputContainer}>
+              <ThemedText style={[styles.label, { color: '#000000' }]}>Password</ThemedText>
               <TextInput
                 style={[
                   styles.input,
                   { 
-                    color: textColor, 
-                    borderColor: colorScheme === 'dark' ? '#444' : '#ddd',
-                    backgroundColor: colorScheme === 'dark' ? '#222' : '#f9f9f9',
+                    color: '#000000', 
+                    borderColor: '#004080',
+                    backgroundColor: 'rgba(255, 249, 196, 0.5)',
                   }
                 ]}
                 placeholder="Enter password"
-                placeholderTextColor={colorScheme === 'dark' ? '#666' : '#999'}
+                placeholderTextColor="#666666"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -124,7 +142,7 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 editable={!loading}
               />
-            </ThemedView>
+            </View>
 
             {error ? (
               <ThemedText style={[styles.error, { color: '#ff4444' }]}>
@@ -136,7 +154,9 @@ export default function LoginScreen() {
               style={[
                 styles.button,
                 { 
-                  backgroundColor: loading ? '#ccc' : tintColor,
+                  backgroundColor: loading ? 'rgba(255, 249, 196, 0.5)' : 'rgba(255, 249, 196, 0.5)',
+                  borderColor: '#004080',
+                  borderWidth: 1,
                   opacity: loading ? 0.6 : 1,
                 }
               ]}
@@ -144,13 +164,13 @@ export default function LoginScreen() {
               activeOpacity={0.8}
               disabled={loading}>
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color="#000000" />
               ) : (
-                <ThemedText style={styles.buttonText}>Login</ThemedText>
+                <ThemedText style={[styles.buttonText, { color: '#000000' }]}>Login</ThemedText>
               )}
             </TouchableOpacity>
-          </ThemedView>
-        </ThemedView>
+          </View>
+        </View>
       </KeyboardAvoidingView>
 
       {showVolleyball && (
@@ -174,29 +194,39 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#FFD700',
+    backgroundColor: '#FFF9C4', // Pastel yellow
   },
-  backgroundCircle: {
+  volleyball1: {
     position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    top: -100,
-    right: -100,
+    top: 80,
+    right: 30,
+    width: 80,
+    height: 80,
+    opacity: 0.6,
   },
-  backgroundCircle2: {
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    bottom: -80,
-    left: -80,
+  volleyball2: {
+    position: 'absolute',
+    top: 200,
+    left: 20,
+    width: 60,
+    height: 60,
+    opacity: 0.5,
   },
-  backgroundCircle3: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    top: '30%',
-    right: -50,
+  volleyball3: {
+    position: 'absolute',
+    bottom: 150,
+    right: 50,
+    width: 100,
+    height: 100,
+    opacity: 0.7,
+  },
+  volleyball4: {
+    position: 'absolute',
+    bottom: 80,
+    left: 40,
+    width: 70,
+    height: 70,
+    opacity: 0.55,
   },
   keyboardView: {
     flex: 1,
@@ -210,6 +240,7 @@ const styles = StyleSheet.create({
   title: {
     textAlign: 'center',
     marginBottom: 48,
+    color: '#000000',
   },
   form: {
     width: '100%',

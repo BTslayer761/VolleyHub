@@ -4,13 +4,15 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withSequence,
+  withDelay,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const GRID_COLS = 12;
-const GRID_ROWS = 18;
+const GRID_COLS = 8;
+const GRID_ROWS = 12;
 const TILE_WIDTH = SCREEN_WIDTH / GRID_COLS;
 const TILE_HEIGHT = SCREEN_HEIGHT / GRID_ROWS;
 
@@ -20,26 +22,26 @@ type Props = {
 
 export function ScreenShatter({ onComplete }: Props) {
   const tiles = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => i);
-  const fadeProgress = useSharedValue(0);
+  const containerOpacity = useSharedValue(1);
 
   useEffect(() => {
-    // Start fade immediately
-    fadeProgress.value = withTiming(1, {
-      duration: 200,
+    // Fade out container smoothly
+    containerOpacity.value = withTiming(0, {
+      duration: 400,
       easing: Easing.out(Easing.ease),
     });
 
-    // Navigate very quickly - almost immediately
+    // Navigate after a short delay for smooth transition
     const timer = setTimeout(() => {
       onComplete();
-    }, 150);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [onComplete]);
 
   const containerStyle = useAnimatedStyle(() => {
     return {
-      opacity: 1 - fadeProgress.value * 0.3, // Slight fade for smoothness
+      opacity: containerOpacity.value,
     };
   });
 
@@ -59,6 +61,7 @@ function ShatterTile({ index }: { index: number }) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const rotate = useSharedValue(0);
+  const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
   useEffect(() => {
@@ -84,42 +87,73 @@ function ShatterTile({ index }: { index: number }) {
     const dirX = deltaX / distance;
     const dirY = deltaY / distance;
 
-    // Randomize the explosion
-    const randomFactor = 0.7 + Math.random() * 0.6;
-    const explosionDistance = distance * randomFactor * 2;
+    // Smoother explosion with less randomness
+    const explosionDistance = distance * 1.2;
+    
+    // Stagger animation based on distance from center
+    const delay = (distance / maxDistance) * 100;
 
-    // Very fast shatter - immediate
-    const duration = 200 + Math.random() * 150;
+    // Duration based on distance for smoother effect
+    const duration = 350 + (distance / maxDistance) * 150;
 
-    // Animate tile flying away immediately
-    translateX.value = withTiming(
-      dirX * explosionDistance,
-      {
-        duration,
-        easing: Easing.out(Easing.cubic),
-      }
+    // Animate tile flying away with sequence for smoother effect
+    translateX.value = withDelay(
+      delay,
+      withSequence(
+        withTiming(dirX * explosionDistance * 0.3, {
+          duration: duration * 0.3,
+          easing: Easing.out(Easing.quad),
+        }),
+        withTiming(dirX * explosionDistance, {
+          duration: duration * 0.7,
+          easing: Easing.out(Easing.cubic),
+        })
+      )
     );
 
-    translateY.value = withTiming(
-      dirY * explosionDistance,
-      {
-        duration,
-        easing: Easing.out(Easing.cubic),
-      }
+    translateY.value = withDelay(
+      delay,
+      withSequence(
+        withTiming(dirY * explosionDistance * 0.3, {
+          duration: duration * 0.3,
+          easing: Easing.out(Easing.quad),
+        }),
+        withTiming(dirY * explosionDistance, {
+          duration: duration * 0.7,
+          easing: Easing.out(Easing.cubic),
+        })
+      )
     );
 
-    rotate.value = withTiming(
-      (Math.random() - 0.5) * 1080,
-      {
+    rotate.value = withDelay(
+      delay,
+      withTiming((Math.random() - 0.5) * 360, {
         duration,
         easing: Easing.out(Easing.cubic),
-      }
+      })
     );
 
-    opacity.value = withTiming(0, {
-      duration,
-      easing: Easing.out(Easing.cubic),
-    });
+    scale.value = withDelay(
+      delay,
+      withTiming(0.8, {
+        duration: duration * 0.5,
+        easing: Easing.out(Easing.quad),
+      })
+    );
+
+    opacity.value = withDelay(
+      delay,
+      withSequence(
+        withTiming(0.7, {
+          duration: duration * 0.3,
+          easing: Easing.out(Easing.quad),
+        }),
+        withTiming(0, {
+          duration: duration * 0.7,
+          easing: Easing.out(Easing.cubic),
+        })
+      )
+    );
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -128,6 +162,7 @@ function ShatterTile({ index }: { index: number }) {
         { translateX: translateX.value },
         { translateY: translateY.value },
         { rotate: `${rotate.value}deg` },
+        { scale: scale.value },
       ],
       opacity: opacity.value,
     };
@@ -162,6 +197,6 @@ const styles = StyleSheet.create({
   tile: {
     position: 'absolute',
     borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
 });

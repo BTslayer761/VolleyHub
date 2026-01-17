@@ -10,15 +10,20 @@ npm install firebase
 
 ## Step 2: Get Your Firebase Configuration
 
+### For Mobile App (Recommended)
+
+Since you're building a mobile app, you can use the **Web** app configuration - it works perfectly for React Native/Expo apps!
+
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Select your project (or create a new one)
 3. Click on the gear icon ⚙️ next to "Project Overview"
 4. Select "Project settings"
 5. Scroll down to "Your apps" section
-6. If you don't have a web app yet:
-   - Click the `</>` (Web) icon
-   - Register your app with a nickname (e.g., "VolleyHub Web")
-   - Copy the configuration values
+6. Click the `</>` (Web) icon to add a web app
+7. Register your app with a nickname (e.g., "VolleyHub Mobile")
+8. Copy the configuration values (you'll see a `firebaseConfig` object)
+
+**Note**: The web config works for both iOS and Android in Expo. You don't need separate iOS/Android apps unless you're using native Firebase features.
 
 ## Step 3: Enable Email/Password Authentication
 
@@ -59,15 +64,50 @@ You can now use this email/password to test login in your app!
 
 ## Step 7: Test the Login
 
-1. Run your app: `npm start`
-2. Try logging in with the email/password you created
-3. The volleyball animation should play on successful login!
+### On Mobile Device (Recommended)
+
+1. **Install Expo Go** on your phone:
+   - [iOS App Store](https://apps.apple.com/app/expo-go/id982107779)
+   - [Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
+
+2. **Start the development server**:
+   ```bash
+   npm start
+   ```
+
+3. **Scan the QR code** with Expo Go app
+
+4. **Test login** with the email/password you created
+
+5. **Watch the volleyball animation** play on successful login!
+
+### On Simulator/Emulator
+
+- **iOS**: `npm run ios`
+- **Android**: `npm run android`
+
+Then test the login flow.
 
 ## Troubleshooting
 
 - **"Firebase: Error (auth/invalid-api-key)"**: Make sure your `.env` file has the correct API key
 - **"Firebase: Error (auth/network-request-failed)"**: Check your internet connection
 - **Environment variables not loading**: Make sure your `.env` file is in the root directory and restart your Expo server
+
+## Do I Need Firebase Hosting?
+
+**No!** Firebase Hosting is only for web apps. Since you're building a **mobile app** with Expo/React Native, you don't need Firebase Hosting.
+
+### What You Actually Need:
+
+✅ **Firebase Authentication** - For user login (already set up!)  
+❌ **Firebase Hosting** - Only for web apps, not needed for mobile  
+❓ **Firebase Firestore/Realtime Database** - Optional, only if you need to store user data  
+❓ **Firebase Storage** - Optional, only if you need to store files/images  
+
+### For Your Mobile App:
+
+Your app runs natively on iOS/Android devices, so it doesn't need hosting. The app code is bundled into the mobile app itself.
 
 ## Security Note
 

@@ -9,7 +9,7 @@ import Animated, {
   runOnJS,
   interpolate,
 } from 'react-native-reanimated';
-import { Volleyball } from './volleyball';
+import { Image } from 'expo-image';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const VOLLEYBALL_SIZE = 120;
@@ -95,7 +95,11 @@ export function VolleyballAnimation({ onHit }: Props) {
 
   return (
     <Animated.View style={[styles.container, animatedStyle]} pointerEvents="none">
-      <Volleyball size={VOLLEYBALL_SIZE} />
+      <Image
+        source={require('@/assets/images/volleyball.png')}
+        style={styles.volleyballImage}
+        contentFit="contain"
+      />
     </Animated.View>
   );
 }
@@ -108,5 +112,9 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  volleyballImage: {
+    width: VOLLEYBALL_SIZE,
+    height: VOLLEYBALL_SIZE,
   },
 });
