@@ -10,6 +10,7 @@
 
 export type CourtType = 'outdoor' | 'indoor';
 export type BookingMode = 'fcfs' | 'priority';
+export type OutdoorCourtStatus = 'available' | 'rain' | 'cat1' | 'closed' | 'cancelled';
 
 export interface Court {
   id: string;
@@ -20,6 +21,9 @@ export interface Court {
   startTime: string;
   endTime: string;
   description?: string;
+  
+  // Outdoor court specific
+  status?: OutdoorCourtStatus; // Status updates for outdoor courts (rain, cat1, etc.)
   
   // Indoor court specific
   maxSlots?: number;           // For indoor courts

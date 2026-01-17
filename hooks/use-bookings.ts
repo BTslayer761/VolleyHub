@@ -3,12 +3,12 @@
  * Separates data fetching logic from UI components
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 // Mock services (temporary - will be replaced with real services during integration)
-import { mockAuthService } from '@/app/mocks/auth-mock';
+import { mockAuthService as mockUserAuthService } from '@/app/mocks/auth-mock';
 import { mockBookingService } from '@/app/mocks/booking-mock';
-import { mockCourtService } from '@/app/mocks/court-mock';
+import { courtService } from '@/lib/services/court-service';
 
 import { BookingWithCourt } from '@/app/utils/booking-utils';
 
@@ -17,15 +17,16 @@ export function useBookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const loadBookings = async () => {
+  const loadBookings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get current user
-      const user = mockAuthService.getCurrentUser();
+      // Get current user (using user auth service for bookings)
+      const user = mockUserAuthService.getCurrentUser();
       if (!user) {
         setBookings([]);
+        setLoading(false);
         return;
       }
 
@@ -35,7 +36,7 @@ export function useBookings() {
       // Fetch court details for each booking
       const bookingsWithCourts = await Promise.all(
         userBookings.map(async (booking) => {
-          const court = await mockCourtService.getCourtById(booking.courtId);
+          const court = await courtService.getCourtById(booking.courtId);
           return { booking, court };
         })
       );
@@ -54,18 +55,18 @@ export function useBookings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadBookings();
-  }, []);
+  }, [loadBookings]);
 
   /**
    * Cancel an outdoor court booking (RSVP)
    */
   const cancelOutdoorBooking = async (courtId: string) => {
     try {
-      const user = mockAuthService.getCurrentUser();
+      const user = mockUserAuthService.getCurrentUser();
       if (!user) return;
 
       await mockBookingService.cancelOutdoorBooking(courtId, user.id);
