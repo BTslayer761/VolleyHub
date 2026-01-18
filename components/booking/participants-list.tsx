@@ -236,16 +236,24 @@ export function ParticipantsList({
                 key={participant.userId} 
                 style={[
                   styles.participantItem,
-                  isFriend && {
-                    backgroundColor: colorScheme === 'dark' 
-                      ? 'rgba(59, 130, 246, 0.15)' 
-                      : 'rgba(59, 130, 246, 0.1)',
-                    borderColor: colorScheme === 'dark' 
-                      ? 'rgba(59, 130, 246, 0.3)' 
-                      : 'rgba(59, 130, 246, 0.2)',
+                  {
+                    backgroundColor: isFriend 
+                      ? (colorScheme === 'dark' 
+                          ? 'rgba(59, 130, 246, 0.15)' 
+                          : 'rgba(59, 130, 246, 0.1)')
+                      : (colorScheme === 'dark'
+                          ? 'rgba(255, 255, 255, 0.05)'
+                          : 'rgba(0, 0, 0, 0.02)'),
+                    borderColor: isFriend
+                      ? (colorScheme === 'dark' 
+                          ? 'rgba(59, 130, 246, 0.3)' 
+                          : 'rgba(59, 130, 246, 0.2)')
+                      : (colorScheme === 'dark'
+                          ? 'rgba(255, 255, 255, 0.1)'
+                          : 'rgba(0, 0, 0, 0.05)'),
                   },
                 ]}>
-                <ThemedView style={styles.participantInfo}>
+                <ThemedView style={[styles.participantInfo, { backgroundColor: 'transparent' }]}>
                   <View style={styles.participantNameRow}>
                     <ThemedText 
                       type="defaultSemiBold" 
@@ -270,7 +278,7 @@ export function ParticipantsList({
                   )}
                 </ThemedView>
                 
-                <ThemedView style={styles.rightSection}>
+                <ThemedView style={[styles.rightSection, { backgroundColor: 'transparent' }]}>
                   <ThemedView
                     style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
                     <ThemedText style={[styles.statusText, { color: statusColor }]}>
@@ -320,9 +328,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    // Background and border colors are set inline based on theme and friend status
   },
   participantInfo: {
     flex: 1,
