@@ -3,15 +3,13 @@
  * Displays user's friends list, add friend functionality, and friend activity
  */
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Image } from 'expo-image';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 // Friends components
 import { AddFriendModal } from '@/components/friends/add-friend-modal';
@@ -100,15 +98,8 @@ export default function FriendsScreen() {
   };
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.container}>
+    <ThemedView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View style={styles.header}>
           <ThemedText type="title" style={styles.title}>
@@ -204,7 +195,7 @@ export default function FriendsScreen() {
           </ThemedText>
           // TODO: Show recent friend bookings, sessions, etc.
         </ThemedView> */}
-      </ThemedView>
+      </ScrollView>
 
       {/* Add Friend Modal */}
       <AddFriendModal
@@ -218,26 +209,23 @@ export default function FriendsScreen() {
         onSendFriendRequest={sendFriendRequest}
         onCancelSentRequest={handleCancelSentRequest}
       />
-    </ParallaxScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingBottom: 20,
   },
-  headerImage: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  scrollView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 16,
+    paddingTop: 60, // Account for status bar
     marginBottom: 24,
   },
   title: {
@@ -261,6 +249,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     paddingVertical: 20,
+    marginHorizontal: 16,
     marginBottom: 24,
     borderRadius: 12,
     borderWidth: 1,
@@ -300,6 +289,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   requestsSection: {
+    marginHorizontal: 16,
     marginBottom: 24,
     padding: 16,
     borderRadius: 12,
